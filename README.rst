@@ -1,2 +1,4 @@
-# mixedqueue
-Midex sync-async queue
+mixedqueue
+==========
+
+Mixed sync-async queue
