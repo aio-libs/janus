@@ -30,12 +30,10 @@ class Queue:
         self._async_not_full = asyncio.Condition(self._async_mutex, loop=loop)
         self._sync_all_tasks_done = threading.Condition(self._sync_mutex)
         self._async_all_tasks_done = asyncio.Condition(self._async_mutex,
-                                                         loop=loop)
+                                                       loop=loop)
 
         self._sync_queue = SyncQueue(self)
         self._async_queue = AsyncQueue(self, loop=loop)
-
-
 
     @property
     def sync_queue(self):
