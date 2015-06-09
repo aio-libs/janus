@@ -22,15 +22,10 @@ class Queue:
 
         self._init(maxsize)
 
-        self._sync_mutex = threading.Lock()
-        self._async_mutex = asyncio.Lock(loop=loop)
-        self._sync_not_empty = threading.Condition(self._sync_mutex)
-        self._async_not_empty = asyncio.Condition(self._async_mutex, loop=loop)
-        self._sync_not_full = threading.Condition(self._sync_mutex)
-        self._async_not_full = asyncio.Condition(self._async_mutex, loop=loop)
-        self._sync_all_tasks_done = threading.Condition(self._sync_mutex)
-        self._async_all_tasks_done = asyncio.Condition(self._async_mutex,
-                                                       loop=loop)
+        self._mutex = threading.Lock()
+        self._not_empty = threading.Condition(self._mutex)
+        self._not_full = threading.Condition(self._mutex)
+        self._all_tasks_done = threading.Condition(self._mutex)
 
         self._sync_queue = SyncQueue(self)
         self._async_queue = AsyncQueue(self)
@@ -75,10 +70,10 @@ class SyncQueue:
     def __init__(self, parent):
         self._maxsize = parent._maxsize
 
-        self._sync_mutex = parent._sync_mutex
-        self._sync_not_empty = parent._sync_not_empty
-        self._sync_not_full = parent._sync_not_full
-        self._sync_all_tasks_done = parent._sync_all_tasks_done
+        self._mutex = parent._mutex
+        self._not_empty = parent._not_empty
+        self._not_full = parent._not_full
+        self._all_tasks_done = parent._all_tasks_done
         self._unfinished_tasks = 0
 
         self._qsize = parent._qsize
@@ -103,12 +98,12 @@ class SyncQueue:
         Raises a ValueError if called more times than there were items
         placed in the queue.
         '''
-        with self._sync_all_tasks_done:
+        with self._all_tasks_done:
             unfinished = self._unfinished_tasks - 1
             if unfinished <= 0:
                 if unfinished < 0:
                     raise ValueError('task_done() called too many times')
-                self._sync_all_tasks_done.notify_all()
+                self._all_tasks_done.notify_all()
             self._unfinished_tasks = unfinished
 
     def join(self):
@@ -120,9 +115,9 @@ class SyncQueue:
 
         When the count of unfinished tasks drops to zero, join() unblocks.
         '''
-        with self._sync_all_tasks_done:
+        with self._all_tasks_done:
             while self._unfinished_tasks:
-                self._sync_all_tasks_done.wait()
+                self._all_tasks_done.wait()
 
     def qsize(self):
         '''Return the approximate size of the queue (not reliable!).'''
@@ -162,14 +157,14 @@ class SyncQueue:
         is immediately available, else raise the Full exception ('timeout'
         is ignored in that case).
         '''
-        with self._sync_not_full:
+        with self._not_full:
             if self._maxsize > 0:
                 if not block:
                     if self._qsize() >= self._maxsize:
                         raise SyncQueueFull
                 elif timeout is None:
                     while self._qsize() >= self._maxsize:
-                        self._sync_not_full.wait()
+                        self._not_full.wait()
                 elif timeout < 0:
                     raise ValueError("'timeout' must be a non-negative number")
                 else:
@@ -178,10 +173,10 @@ class SyncQueue:
                         remaining = endtime - monotonic()
                         if remaining <= 0.0:
                             raise SyncQueueFull
-                        self._sync_not_full.wait(remaining)
+                        self._not_full.wait(remaining)
             self._put(item)
             self._unfinished_tasks += 1
-            self._sync_not_empty.notify()
+            self._not_empty.notify()
 
     def get(self, block=True, timeout=None):
         '''Remove and return an item from the queue.
@@ -194,13 +189,13 @@ class SyncQueue:
         available, else raise the Empty exception ('timeout' is ignored
         in that case).
         '''
-        with self._sync_not_empty:
+        with self._not_empty:
             if not block:
                 if not self._qsize():
                     raise SyncQueueEmpty
             elif timeout is None:
                 while not self._qsize():
-                    self._sync_not_empty.wait()
+                    self._not_empty.wait()
             elif timeout < 0:
                 raise ValueError("'timeout' must be a non-negative number")
             else:
@@ -209,9 +204,9 @@ class SyncQueue:
                     remaining = endtime - monotonic()
                     if remaining <= 0.0:
                         raise SyncQueueEmpty
-                    self._sync_not_empty.wait(remaining)
+                    self._not_empty.wait(remaining)
             item = self._get()
-            self._sync_not_full.notify()
+            self._not_full.notify()
             return item
 
     def put_nowait(self, item):
@@ -241,86 +236,59 @@ class AsyncQueue:
         self._maxsize = parent._maxsize
         self._loop = parent._loop
 
-        self._async_mutex = parent._async_mutex
-        self._sync_mutex = parent._sync_mutex
-        self._async_not_empty = parent._async_not_empty
-        self._async_not_full = parent._async_not_full
-        self._async_all_tasks_done = parent._async_all_tasks_done
+        # Futures.
+        self._getters = deque()
+        # Pairs of (item, Future).
+        self._putters = deque()
         self._unfinished_tasks = 0
+        self._finished = asyncio.Event(loop=self._loop)
+        self._finished.set()
 
         self._qsize = parent._qsize
         self._put = parent._put
         self._get = parent._get
 
-    @property
-    def maxsize(self):
-        return self._maxsize
+    def __put_internal(self, item):
+        self._put(item)
+        self._unfinished_tasks += 1
+        self._finished.clear()
 
-    def task_done(self):
-        '''Indicate that a formerly enqueued task is complete.
+    def _consume_done_getters(self):
+        # Delete waiters at the head of the get() queue who've timed out.
+        while self._getters and self._getters[0].done():
+            self._getters.popleft()
 
-        Used by Queue consumer threads.  For each get() used to fetch a task,
-        a subsequent call to task_done() tells the queue that the processing
-        on the task is complete.
-
-        If a join() is currently blocking, it will resume when all items
-        have been processed (meaning that a task_done() call was received
-        for every item that had been put() into the queue).
-
-        Raises a ValueError if called more times than there were items
-        placed in the queue.
-        '''
-        with (yield from self._all_tasks_done):
-            unfinished = self._unfinished_tasks - 1
-            if unfinished <= 0:
-                if unfinished < 0:
-                    raise ValueError('task_done() called too many times')
-                self._all_tasks_done.notify_all()
-            self._unfinished_tasks = unfinished
-
-    @asyncio.coroutine
-    def join(self):
-        '''Blocks until all items in the Queue have been gotten and processed.
-
-        The count of unfinished tasks goes up whenever an item is added to the
-        queue. The count goes down whenever a consumer thread calls task_done()
-        to indicate the item was retrieved and all work on it is complete.
-
-        When the count of unfinished tasks drops to zero, join() unblocks.
-        '''
-        with (yield from self._all_tasks_done):
-            while self._unfinished_tasks:
-                self._all_tasks_done.wait()
+    def _consume_done_putters(self):
+        # Delete waiters at the head of the put() queue who've timed out.
+        while self._putters and self._putters[0][1].done():
+            self._putters.popleft()
 
     def qsize(self):
-        '''Return the approximate size of the queue (not reliable!).'''
+        """Number of items in the queue."""
         return self._qsize()
 
+    @property
+    def maxsize(self):
+        """Number of items allowed in the queue."""
+        return self._maxsize
+
     def empty(self):
-        '''Return True if the queue is empty, False otherwise (not reliable!).
-
-        This method is likely to be removed at some point.  Use qsize() == 0
-        as a direct substitute, but be aware that either approach risks a race
-        condition where a queue can grow before the result of empty() or
-        qsize() can be used.
-
-        To create code that needs to wait for all queued tasks to be
-        completed, the preferred technique is to use the join() method.
-        '''
-        return not self._qsize()
+        """Return True if the queue is empty, False otherwise."""
+        return self.qsize() == 0
 
     def full(self):
-        '''Return True if the queue is full, False otherwise (not reliable!).
+        """Return True if there are maxsize items in the queue.
 
-        This method is likely to be removed at some point.  Use qsize() >= n
-        as a direct substitute, but be aware that either approach risks a race
-        condition where a queue can shrink before the result of full() or
-        qsize() can be used.
-        '''
-        return 0 < self._maxsize <= self._qsize()
+        Note: if the Queue was initialized with maxsize=0 (the default),
+        then full() is never True.
+        """
+        if self._maxsize <= 0:
+            return False
+        else:
+            return self.qsize() >= self._maxsize
 
     @asyncio.coroutine
-    def put(self, item, block=True, timeout=None):
+    def put(self, item):
         """Put an item into the queue.
 
         Put an item into the queue. If the queue is full, wait until a free
@@ -328,14 +296,46 @@ class AsyncQueue:
 
         This method is a coroutine.
         """
-        with (yield from self._async_not_full):
-            if self._maxsize > 0:
-                while self._qsize() >= self._maxsize:
-                    yield from self._async_not_full.wait()
+        self._consume_done_getters()
+        if self._getters:
+            assert not self._queue, (
+                'queue non-empty, why are getters waiting?')
 
-            self._put(item)
-            self._unfinished_tasks += 1
-            self._async_not_empty.notify()
+            getter = self._getters.popleft()
+            self.__put_internal(item)
+
+            # getter cannot be cancelled, we just removed done getters
+            getter.set_result(self._get())
+
+        elif self._maxsize > 0 and self._maxsize <= self.qsize():
+            waiter = asyncio.Future(loop=self._loop)
+
+            self._putters.append((item, waiter))
+            yield from waiter
+
+        else:
+            self.__put_internal(item)
+
+    def put_nowait(self, item):
+        """Put an item into the queue without blocking.
+
+        If no free slot is immediately available, raise QueueFull.
+        """
+        self._consume_done_getters()
+        if self._getters:
+            assert self.empty(), (
+                'queue non-empty, why are getters waiting?')
+
+            getter = self._getters.popleft()
+            self.__put_internal(item)
+
+            # getter cannot be cancelled, we just removed done getters
+            getter.set_result(self._get())
+
+        elif self._maxsize > 0 and self._maxsize <= self.qsize():
+            raise AsyncQueueFull
+        else:
+            self.__put_internal(item)
 
     @asyncio.coroutine
     def get(self):
@@ -345,60 +345,81 @@ class AsyncQueue:
 
         This method is a coroutine.
         """
-        with (yield from self._async_not_empty):
-            while not self._qsize():
-                yield from self._async_not_empty.wait()
+        self._consume_done_putters()
+        if self._putters:
+            assert self.full(), 'queue not full, why are putters waiting?'
+            item, putter = self._putters.popleft()
+            self.__put_internal(item)
 
-            item = self._get()
-            self._async_not_full.notify()
-            return item
+            # When a getter runs and frees up a slot so this putter can
+            # run, we need to defer the put for a tick to ensure that
+            # getters and putters alternate perfectly. See
+            # ChannelTest.test_wait.
+            self._loop.call_soon(putter._set_result_unless_cancelled, None)
 
-    def put_nowait(self, item):
-        """Put an item into the queue without blocking.
+            return self._get()
 
-        If no free slot is immediately available, raise QueueFull.
-        """
+        elif self.qsize():
+            return self._get()
+        else:
+            waiter = asyncio.Future(loop=self._loop)
 
-        with (yield from self._async_not_full):
-            if self._maxsize > 0:
-                if self._qsize() >= self._maxsize:
-                    raise AsyncQueueFull
-
-            self._put(item)
-            self._unfinished_tasks += 1
-            self._async_not_empty.notify()
+            self._getters.append(waiter)
+            return (yield from waiter)
 
     def get_nowait(self):
         """Remove and return an item from the queue.
 
         Return an item if one is immediately available, else raise QueueEmpty.
         """
-        with (yield from self._async_not_empty):
-            if not self._qsize():
-                raise AsyncQueueEmpty
+        self._consume_done_putters()
+        if self._putters:
+            assert self.full(), 'queue not full, why are putters waiting?'
+            item, putter = self._putters.popleft()
+            self.__put_internal(item)
+            # Wake putter on next tick.
 
-            item = self._get()
-            self._async_not_full.notify()
-            return item
+            # getter cannot be cancelled, we just removed done putters
+            putter.set_result(None)
 
-    # Override these methods to implement other queue organizations
-    # (e.g. stack or priority queue).
-    # These will only be called with appropriate locks held
+            return self._get()
 
-    # Initialize the queue representation
-    def _init(self, maxsize):
-        self._queue = deque()
+        elif self.qsize():
+            return self._get()
+        else:
+            raise AsyncQueueEmpty
 
-    def _qsize(self):
-        return len(self._queue)
+    def task_done(self):
+        """Indicate that a formerly enqueued task is complete.
 
-    # Put a new item in the queue
-    def _put(self, item):
-        self._queue.append(item)
+        Used by queue consumers. For each get() used to fetch a task,
+        a subsequent call to task_done() tells the queue that the processing
+        on the task is complete.
 
-    # Get an item from the queue
-    def _get(self):
-        return self._queue.popleft()
+        If a join() is currently blocking, it will resume when all items have
+        been processed (meaning that a task_done() call was received for every
+        item that had been put() into the queue).
+
+        Raises ValueError if called more times than there were items placed in
+        the queue.
+        """
+        if self._unfinished_tasks <= 0:
+            raise ValueError('task_done() called too many times')
+        self._unfinished_tasks -= 1
+        if self._unfinished_tasks == 0:
+            self._finished.set()
+
+    @asyncio.coroutine
+    def join(self):
+        """Block until all items in the queue have been gotten and processed.
+
+        The count of unfinished tasks goes up whenever an item is added to the
+        queue. The count goes down whenever a consumer calls task_done() to
+        indicate that the item was retrieved and all work on it is complete.
+        When the count of unfinished tasks drops to zero, join() unblocks.
+        """
+        if self._unfinished_tasks > 0:
+            yield from self._finished.wait()
 
 
 class PriorityQueue(SyncQueue):
