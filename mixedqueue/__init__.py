@@ -29,6 +29,13 @@ class Queue:
         self._not_full = threading.Condition(self._mutex)
         self._all_tasks_done = threading.Condition(self._mutex)
 
+        # Futures.
+        self._getters = deque()
+        # Pairs of (item, Future).
+        self._putters = deque()
+        self._finished = asyncio.Event(loop=self._loop)
+        self._finished.set()
+
         self._sync_queue = SyncQueue(self)
         self._async_queue = AsyncQueue(self)
 
@@ -61,6 +68,16 @@ class Queue:
     # Get an item from the queue
     def _get(self):
         return self._queue.popleft()
+
+    def _consume_done_getters(self):
+        # Delete waiters at the head of the get() queue who've timed out.
+        while self._getters and self._getters[0].done():
+            self._getters.popleft()
+
+    def _consume_done_putters(self):
+        # Delete waiters at the head of the put() queue who've timed out.
+        while self._putters and self._putters[0][1].done():
+            self._putters.popleft()
 
 
 class SyncQueue:
@@ -225,44 +242,21 @@ class AsyncQueue:
     '''
 
     def __init__(self, parent):
-        self._maxsize = parent._maxsize
-        self._loop = parent._loop
-
-        # Futures.
-        self._getters = deque()
-        # Pairs of (item, Future).
-        self._putters = deque()
-        self._finished = asyncio.Event(loop=self._loop)
-        self._finished.set()
-
-        self._unfinished_tasks = 0
-        self._qsize = parent._qsize
-        self._put = parent._put
-        self._get = parent._get
+        self._parent = parent
 
     def __put_internal(self, item):
-        self._put(item)
-        self._unfinished_tasks += 1
-        self._finished.clear()
-
-    def _consume_done_getters(self):
-        # Delete waiters at the head of the get() queue who've timed out.
-        while self._getters and self._getters[0].done():
-            self._getters.popleft()
-
-    def _consume_done_putters(self):
-        # Delete waiters at the head of the put() queue who've timed out.
-        while self._putters and self._putters[0][1].done():
-            self._putters.popleft()
+        self._parent._put(item)
+        self._parent._unfinished_tasks += 1
+        self._parent._finished.clear()
 
     def qsize(self):
         """Number of items in the queue."""
-        return self._qsize()
+        return self._parent._qsize()
 
     @property
     def maxsize(self):
         """Number of items allowed in the queue."""
-        return self._maxsize
+        return self._parent._maxsize
 
     def empty(self):
         """Return True if the queue is empty, False otherwise."""
@@ -274,10 +268,10 @@ class AsyncQueue:
         Note: if the Queue was initialized with maxsize=0 (the default),
         then full() is never True.
         """
-        if self._maxsize <= 0:
+        if self._parent._maxsize <= 0:
             return False
         else:
-            return self.qsize() >= self._maxsize
+            return self.qsize() >= self._parent._maxsize
 
     @asyncio.coroutine
     def put(self, item):
@@ -288,21 +282,21 @@ class AsyncQueue:
 
         This method is a coroutine.
         """
-        self._consume_done_getters()
-        if self._getters:
-            assert not self._queue, (
+        self._parent._consume_done_getters()
+        if self._parent._getters:
+            assert not self._parent._queue, (
                 'queue non-empty, why are getters waiting?')
 
-            getter = self._getters.popleft()
-            self.__put_internal(item)
+            getter = self._parent._getters.popleft()
+            self._parent.__put_internal(item)
 
             # getter cannot be cancelled, we just removed done getters
-            getter.set_result(self._get())
+            getter.set_result(self._parent._get())
 
-        elif self._maxsize > 0 and self._maxsize <= self.qsize():
-            waiter = asyncio.Future(loop=self._loop)
+        elif (self._parent._maxsize > 0 and self._parent._maxsize <= self.qsize()):
+            waiter = asyncio.Future(loop=self._parent._loop)
 
-            self._putters.append((item, waiter))
+            self._parent._putters.append((item, waiter))
             yield from waiter
 
         else:
@@ -313,18 +307,18 @@ class AsyncQueue:
 
         If no free slot is immediately available, raise QueueFull.
         """
-        self._consume_done_getters()
-        if self._getters:
+        self._parent._consume_done_getters()
+        if self._parent._getters:
             assert self.empty(), (
                 'queue non-empty, why are getters waiting?')
 
-            getter = self._getters.popleft()
+            getter = self._parent._getters.popleft()
             self.__put_internal(item)
 
             # getter cannot be cancelled, we just removed done getters
-            getter.set_result(self._get())
+            getter.set_result(self._parent._get())
 
-        elif self._maxsize > 0 and self._maxsize <= self.qsize():
+        elif self._parent._maxsize > 0 and self._parent._maxsize <= self.qsize():
             raise AsyncQueueFull
         else:
             self.__put_internal(item)
@@ -337,26 +331,26 @@ class AsyncQueue:
 
         This method is a coroutine.
         """
-        self._consume_done_putters()
-        if self._putters:
+        self._parent._consume_done_putters()
+        if self._parent._putters:
             assert self.full(), 'queue not full, why are putters waiting?'
-            item, putter = self._putters.popleft()
+            item, putter = self._parent._putters.popleft()
             self.__put_internal(item)
 
             # When a getter runs and frees up a slot so this putter can
             # run, we need to defer the put for a tick to ensure that
             # getters and putters alternate perfectly. See
             # ChannelTest.test_wait.
-            self._loop.call_soon(putter._set_result_unless_cancelled, None)
+            self._parent._loop.call_soon(putter._set_result_unless_cancelled, None)
 
-            return self._get()
+            return self._parent._get()
 
         elif self.qsize():
-            return self._get()
+            return self._parent._get()
         else:
-            waiter = asyncio.Future(loop=self._loop)
+            waiter = asyncio.Future(loop=self._parent._loop)
 
-            self._getters.append(waiter)
+            self._parent._getters.append(waiter)
             return (yield from waiter)
 
     def get_nowait(self):
@@ -364,20 +358,20 @@ class AsyncQueue:
 
         Return an item if one is immediately available, else raise QueueEmpty.
         """
-        self._consume_done_putters()
-        if self._putters:
+        self._parent._consume_done_putters()
+        if self._parent._putters:
             assert self.full(), 'queue not full, why are putters waiting?'
-            item, putter = self._putters.popleft()
+            item, putter = self._parent._putters.popleft()
             self.__put_internal(item)
             # Wake putter on next tick.
 
             # getter cannot be cancelled, we just removed done putters
             putter.set_result(None)
 
-            return self._get()
+            return self._parent._get()
 
         elif self.qsize():
-            return self._get()
+            return self._parent._get()
         else:
             raise AsyncQueueEmpty
 
@@ -395,11 +389,11 @@ class AsyncQueue:
         Raises ValueError if called more times than there were items placed in
         the queue.
         """
-        if self._unfinished_tasks <= 0:
+        if self._parent._unfinished_tasks <= 0:
             raise ValueError('task_done() called too many times')
-        self._unfinished_tasks -= 1
-        if self._unfinished_tasks == 0:
-            self._finished.set()
+        self._parent._unfinished_tasks -= 1
+        if self._parent._unfinished_tasks == 0:
+            self._parent._finished.set()
 
     @asyncio.coroutine
     def join(self):
@@ -410,8 +404,8 @@ class AsyncQueue:
         indicate that the item was retrieved and all work on it is complete.
         When the count of unfinished tasks drops to zero, join() unblocks.
         """
-        if self._unfinished_tasks > 0:
-            yield from self._finished.wait()
+        if self._parent._unfinished_tasks > 0:
+            yield from self._parent._finished.wait()
 
 
 class PriorityQueue(SyncQueue):
