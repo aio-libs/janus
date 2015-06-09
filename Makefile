@@ -11,7 +11,7 @@ vtest: flake develop
 	py.test -v tests
 
 yapf:
-	yapf -ri .
+	yapf -ri mixedqueue tests setup.py
 
 cov: flake develop
 	py.test --cov=mixedqueue --cov=tests --cov-report=term --cov-report=html

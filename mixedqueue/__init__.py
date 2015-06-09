@@ -411,7 +411,7 @@ class AsyncQueue:
             yield from self._parent._finished.wait()
 
 
-class PriorityQueue(SyncQueue):
+class PriorityQueue(Queue):
     '''Variant of Queue that retrieves open entries in priority order
     (lowest first).
 
@@ -420,29 +420,29 @@ class PriorityQueue(SyncQueue):
     '''
 
     def _init(self, maxsize):
-        self.queue = []
+        self._queue = []
 
     def _qsize(self):
-        return len(self.queue)
+        return len(self._queue)
 
     def _put(self, item):
-        heappush(self.queue, item)
+        heappush(self._queue, item)
 
     def _get(self):
-        return heappop(self.queue)
+        return heappop(self._queue)
 
 
-class LifoQueue(SyncQueue):
+class LifoQueue(Queue):
     '''Variant of Queue that retrieves most recently added entries first.'''
 
     def _init(self, maxsize):
-        self.queue = []
+        self._queue = deque()
 
     def _qsize(self):
-        return len(self.queue)
+        return len(self._queue)
 
     def _put(self, item):
-        self.queue.append(item)
+        self._queue.append(item)
 
     def _get(self):
-        return self.queue.pop()
+        return self._queue.pop()

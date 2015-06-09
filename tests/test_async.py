@@ -84,13 +84,11 @@ class QueueBasicTests(_QueueTestBase):
         q = mixedqueue.Queue()
         self.assertIs(q._loop, self.loop)
 
-    @unittest.expectedFailure
-    def test_repr(self):
-        self._test_repr_or_str(repr, True)
+    # def test_repr(self):
+    #     self._test_repr_or_str(repr, True)
 
-    @unittest.expectedFailure
-    def test_str(self):
-        self._test_repr_or_str(str, False)
+    # def test_str(self):
+    #     self._test_repr_or_str(str, False)
 
     def test_empty(self):
         _q = mixedqueue.Queue(loop=self.loop)
@@ -425,7 +423,8 @@ class QueuePutTests(_QueueTestBase):
 
 class LifoQueueTests(_QueueTestBase):
     def test_order(self):
-        q = asyncio.LifoQueue(loop=self.loop)
+        _q = mixedqueue.LifoQueue(loop=self.loop)
+        q = _q.async_queue
         for i in [1, 3, 2]:
             q.put_nowait(i)
 
@@ -435,7 +434,8 @@ class LifoQueueTests(_QueueTestBase):
 
 class PriorityQueueTests(_QueueTestBase):
     def test_order(self):
-        q = asyncio.PriorityQueue(loop=self.loop)
+        _q = mixedqueue.PriorityQueue(loop=self.loop)
+        q = _q.async_queue
         for i in [1, 3, 2]:
             q.put_nowait(i)
 
@@ -517,11 +517,14 @@ class _QueueJoinTestMixin:
 class QueueJoinTests(_QueueJoinTestMixin, _QueueTestBase):
     q_class = mixedqueue.Queue
 
-# class LifoQueueJoinTests(_QueueJoinTestMixin, _QueueTestBase):
-#     q_class = asyncio.LifoQueue
 
-# class PriorityQueueJoinTests(_QueueJoinTestMixin, _QueueTestBase):
-#     q_class = asyncio.PriorityQueue
+class LifoQueueJoinTests(_QueueJoinTestMixin, _QueueTestBase):
+    q_class = mixedqueue.LifoQueue
+
+
+class PriorityQueueJoinTests(_QueueJoinTestMixin, _QueueTestBase):
+    q_class = mixedqueue.PriorityQueue
+
 
 if __name__ == '__main__':
     unittest.main()

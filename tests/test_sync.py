@@ -253,11 +253,13 @@ class BaseQueueTestMixin(BlockingTestMixin):
 class QueueTest(BaseQueueTestMixin, unittest.TestCase):
     type2test = mixedqueue.Queue
 
-# class LifoQueueTest(BaseQueueTestMixin, unittest.TestCase):
-#     type2test = queue.LifoQueue
 
-# class PriorityQueueTest(BaseQueueTestMixin, unittest.TestCase):
-#     type2test = queue.PriorityQueue
+class LifoQueueTest(BaseQueueTestMixin, unittest.TestCase):
+    type2test = mixedqueue.LifoQueue
+
+
+class PriorityQueueTest(BaseQueueTestMixin, unittest.TestCase):
+    type2test = mixedqueue.PriorityQueue
 
 
 # A Queue subclass that can provoke failure at a moment's notice :)
