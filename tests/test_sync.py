@@ -1,5 +1,6 @@
 # Some simple queue module tests, plus some failure conditions
 # to ensure the Queue locks remain stable.
+import asyncio
 import queue
 import time
 import unittest
@@ -48,10 +49,16 @@ class _TriggerThread(threading.Thread):
 
 class BlockingTestMixin:
 
+    def setUp(self):
+        asyncio.set_event_loop(None)
+        self.loop = asyncio.new_event_loop()
+
     def tearDown(self):
         self.t = None
+        self.loop.close()
 
-    def do_blocking_test(self, block_func, block_args, trigger_func, trigger_args):
+    def do_blocking_test(self, block_func, block_args,
+                         trigger_func, trigger_args):
         self.t = _TriggerThread(trigger_func, trigger_args)
         self.t.start()
         self.result = block_func(*block_args)
@@ -88,9 +95,11 @@ class BlockingTestMixin:
 
 
 class BaseQueueTestMixin(BlockingTestMixin):
+
     def setUp(self):
         self.cum = 0
         self.cumlock = threading.Lock()
+        super().setUp()
 
     def simple_queue_test(self, _q):
         q = _q.sync_queue
@@ -175,7 +184,7 @@ class BaseQueueTestMixin(BlockingTestMixin):
 
     def test_queue_task_done(self):
         # Test to make sure a queue task completed successfully.
-        q = self.type2test().sync_queue
+        q = self.type2test(loop=self.loop).sync_queue
         try:
             q.task_done()
         except ValueError:
@@ -186,7 +195,7 @@ class BaseQueueTestMixin(BlockingTestMixin):
     def test_queue_join(self):
         # Test that a queue join()s successfully, and before anything else
         # (done twice for insurance).
-        q = self.type2test().sync_queue
+        q = self.type2test(loop=self.loop).sync_queue
         self.queue_join_test(q)
         self.queue_join_test(q)
         try:
@@ -199,19 +208,19 @@ class BaseQueueTestMixin(BlockingTestMixin):
     def test_simple_queue(self):
         # Do it a couple of times on the same queue.
         # Done twice to make sure works with same instance reused.
-        q = self.type2test(QUEUE_SIZE)
+        q = self.type2test(QUEUE_SIZE, loop=self.loop)
         self.simple_queue_test(q)
         self.simple_queue_test(q)
 
     def test_negative_timeout_raises_exception(self):
-        q = self.type2test(QUEUE_SIZE).sync_queue
+        q = self.type2test(QUEUE_SIZE, loop=self.loop).sync_queue
         with self.assertRaises(ValueError):
             q.put(1, timeout=-1)
         with self.assertRaises(ValueError):
             q.get(1, timeout=-1)
 
     def test_nowait(self):
-        q = self.type2test(QUEUE_SIZE).sync_queue
+        q = self.type2test(QUEUE_SIZE, loop=self.loop).sync_queue
         for i in range(QUEUE_SIZE):
             q.put_nowait(1)
         with self.assertRaises(queue.Full):
@@ -224,7 +233,7 @@ class BaseQueueTestMixin(BlockingTestMixin):
 
     def test_shrinking_queue(self):
         # issue 10110
-        q = self.type2test(3).sync_queue
+        q = self.type2test(3, loop=self.loop).sync_queue
         q.put(1)
         q.put(2)
         q.put(3)
@@ -251,10 +260,10 @@ class FailingQueueException(Exception):
     pass
 
 class FailingQueue(mixedqueue.Queue):
-    def __init__(self, *args):
+    def __init__(self, *args, **kwargs):
         self.fail_next_put = False
         self.fail_next_get = False
-        super().__init__(*args)
+        super().__init__(*args, **kwargs)
     def _put(self, item):
         if self.fail_next_put:
             self.fail_next_put = False
@@ -356,7 +365,7 @@ class FailingQueueTest(BlockingTestMixin, unittest.TestCase):
     def test_failing_queue(self):
         # Test to make sure a queue is functioning correctly.
         # Done twice to the same instance.
-        q = FailingQueue(QUEUE_SIZE)
+        q = FailingQueue(QUEUE_SIZE, loop=self.loop)
         self.failing_queue_test(q)
         self.failing_queue_test(q)
 

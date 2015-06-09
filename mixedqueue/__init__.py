@@ -33,7 +33,7 @@ class Queue:
                                                        loop=loop)
 
         self._sync_queue = SyncQueue(self)
-        self._async_queue = AsyncQueue(self, loop=loop)
+        self._async_queue = AsyncQueue(self)
 
     @property
     def sync_queue(self):
