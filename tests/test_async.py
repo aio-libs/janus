@@ -166,13 +166,22 @@ class QueueGetTests(_QueueTestBase):
         q = _q.async_queue
         q.put_nowait(1)
 
-        waiter = asyncio.Future(loop=self.loop)
-        q._parent._putters.append((2, waiter))
+        fut = asyncio.Future(loop=self.loop)
+
+        @asyncio.coroutine
+        def put():
+            t = asyncio.async(q.put(2))
+            yield from asyncio.sleep(0.01)
+            fut.set_result(None)
+            return t
+
+        t = self.loop.run_until_complete(put())
 
         res = self.loop.run_until_complete(q.get())
         self.assertEqual(1, res)
-        self.assertTrue(waiter.done())
-        self.assertIsNone(waiter.result())
+
+        self.loop.run_until_complete(t)
+        self.assertEqual(1, q.qsize())
 
     def test_blocking_get_wait(self):
         def gen():
