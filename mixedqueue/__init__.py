@@ -285,7 +285,8 @@ class AsyncQueue:
         self._parent._consume_done_getters()
         if self._parent._getters:
             assert not self._parent._queue, (
-                'queue non-empty, why are getters waiting?')
+                'queue non-empty, why are getters waiting?'
+            )
 
             getter = self._parent._getters.popleft()
             self._parent.__put_internal(item)
@@ -293,7 +294,8 @@ class AsyncQueue:
             # getter cannot be cancelled, we just removed done getters
             getter.set_result(self._parent._get())
 
-        elif (self._parent._maxsize > 0 and self._parent._maxsize <= self.qsize()):
+        elif (self._parent._maxsize > 0 and
+              self._parent._maxsize <= self.qsize()):
             waiter = asyncio.Future(loop=self._parent._loop)
 
             self._parent._putters.append((item, waiter))
@@ -309,8 +311,7 @@ class AsyncQueue:
         """
         self._parent._consume_done_getters()
         if self._parent._getters:
-            assert self.empty(), (
-                'queue non-empty, why are getters waiting?')
+            assert self.empty(), ('queue non-empty, why are getters waiting?')
 
             getter = self._parent._getters.popleft()
             self.__put_internal(item)
@@ -318,7 +319,8 @@ class AsyncQueue:
             # getter cannot be cancelled, we just removed done getters
             getter.set_result(self._parent._get())
 
-        elif self._parent._maxsize > 0 and self._parent._maxsize <= self.qsize():
+        elif (self._parent._maxsize > 0 and
+              self._parent._maxsize <= self.qsize()):
             raise AsyncQueueFull
         else:
             self.__put_internal(item)
@@ -341,7 +343,8 @@ class AsyncQueue:
             # run, we need to defer the put for a tick to ensure that
             # getters and putters alternate perfectly. See
             # ChannelTest.test_wait.
-            self._parent._loop.call_soon(putter._set_result_unless_cancelled, None)
+            self._parent._loop.call_soon(putter._set_result_unless_cancelled,
+                                         None)
 
             return self._parent._get()
 
