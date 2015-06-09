@@ -84,9 +84,11 @@ class QueueBasicTests(_QueueTestBase):
         q = mixedqueue.Queue()
         self.assertIs(q._loop, self.loop)
 
+    @unittest.expectedFailure
     def test_repr(self):
         self._test_repr_or_str(repr, True)
 
+    @unittest.expectedFailure
     def test_str(self):
         self._test_repr_or_str(str, False)
 
@@ -481,6 +483,7 @@ class _QueueJoinTestMixin:
 
         self.loop.run_until_complete(join())
 
+    @unittest.expectedFailure
     def test_format(self):
         _q = self.q_class(loop=self.loop)
         q = _q.async_queue
