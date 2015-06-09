@@ -12,3 +12,7 @@ vtest: flake develop
 
 yapf:
 	yapf -ri .
+
+cov: flake develop
+	py.test --cov=mixedqueue --cov=tests --cov-report=term --cov-report=html
+	@echo "open file://`pwd`/htmlcov/index.html"

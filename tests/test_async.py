@@ -290,7 +290,8 @@ class QueueGetTests(_QueueTestBase):
 
 class QueuePutTests(_QueueTestBase):
     def test_blocking_put(self):
-        q = asyncio.Queue(loop=self.loop)
+        _q = mixedqueue.Queue(loop=self.loop)
+        q = _q.async_queue
 
         @asyncio.coroutine
         def queue_put():
@@ -307,7 +308,8 @@ class QueuePutTests(_QueueTestBase):
 
         loop = self.new_test_loop(gen)
 
-        q = asyncio.Queue(maxsize=1, loop=loop)
+        _q = mixedqueue.Queue(maxsize=1, loop=loop)
+        q = _q.async_queue
         started = asyncio.Event(loop=loop)
         finished = False
 
@@ -332,23 +334,27 @@ class QueuePutTests(_QueueTestBase):
         self.assertAlmostEqual(0.01, loop.time())
 
     def test_nonblocking_put(self):
-        q = asyncio.Queue(loop=self.loop)
+        _q = mixedqueue.Queue(loop=self.loop)
+        q = _q.async_queue
         q.put_nowait(1)
         self.assertEqual(1, q.get_nowait())
 
     def test_nonblocking_put_exception(self):
-        q = asyncio.Queue(maxsize=1, loop=self.loop)
+        _q = mixedqueue.Queue(maxsize=1, loop=self.loop)
+        q = _q.async_queue
         q.put_nowait(1)
         self.assertRaises(asyncio.QueueFull, q.put_nowait, 2)
 
     def test_float_maxsize(self):
-        q = asyncio.Queue(maxsize=1.3, loop=self.loop)
+        _q = mixedqueue.Queue(maxsize=1.3, loop=self.loop)
+        q = _q.async_queue
         q.put_nowait(1)
         q.put_nowait(2)
         self.assertTrue(q.full())
         self.assertRaises(asyncio.QueueFull, q.put_nowait, 3)
 
-        q = asyncio.Queue(maxsize=1.3, loop=self.loop)
+        _q = mixedqueue.Queue(maxsize=1.3, loop=self.loop)
+        q = _q.async_queue
 
         @asyncio.coroutine
         def queue_put():
@@ -359,7 +365,8 @@ class QueuePutTests(_QueueTestBase):
         self.loop.run_until_complete(queue_put())
 
     def test_put_cancelled(self):
-        q = asyncio.Queue(loop=self.loop)
+        _q = mixedqueue.Queue(loop=self.loop)
+        q = _q.async_queue
 
         @asyncio.coroutine
         def queue_put():
@@ -376,7 +383,8 @@ class QueuePutTests(_QueueTestBase):
         self.assertTrue(t.result())
 
     def test_put_cancelled_race(self):
-        q = asyncio.Queue(loop=self.loop, maxsize=1)
+        _q = mixedqueue.Queue(loop=self.loop, maxsize=1)
+        q = _q.async_queue
 
         put_a = asyncio.Task(q.put('a'), loop=self.loop)
         put_b = asyncio.Task(q.put('b'), loop=self.loop)
@@ -395,10 +403,23 @@ class QueuePutTests(_QueueTestBase):
         self.loop.run_until_complete(put_b)
 
     def test_put_with_waiting_getters(self):
-        q = asyncio.Queue(loop=self.loop)
-        t = asyncio.Task(q.get(), loop=self.loop)
-        test_utils.run_briefly(self.loop)
-        self.loop.run_until_complete(q.put('a'))
+        fut = asyncio.Future(loop=self.loop)
+
+        @asyncio.coroutine
+        def go():
+            fut.set_result(None)
+            ret = yield from q.get()
+            return ret
+
+        @asyncio.coroutine
+        def put():
+            yield from q.put('a')
+
+        _q = mixedqueue.Queue(loop=self.loop)
+        q = _q.async_queue
+        t = asyncio.Task(go(), loop=self.loop)
+        self.loop.run_until_complete(fut)
+        self.loop.run_until_complete(put())
         self.assertEqual(self.loop.run_until_complete(t), 'a')
 
 

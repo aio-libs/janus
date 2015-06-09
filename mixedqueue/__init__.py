@@ -79,6 +79,11 @@ class Queue:
         while self._putters and self._putters[0][1].done():
             self._putters.popleft()
 
+    def _put_internal(self, item):
+        self._put(item)
+        self._unfinished_tasks += 1
+        self._finished.clear()
+
 
 class SyncQueue:
     '''Create a queue object with a given maximum size.
@@ -244,11 +249,6 @@ class AsyncQueue:
     def __init__(self, parent):
         self._parent = parent
 
-    def __put_internal(self, item):
-        self._parent._put(item)
-        self._parent._unfinished_tasks += 1
-        self._parent._finished.clear()
-
     def qsize(self):
         """Number of items in the queue."""
         return self._parent._qsize()
@@ -289,7 +289,7 @@ class AsyncQueue:
             )
 
             getter = self._parent._getters.popleft()
-            self._parent.__put_internal(item)
+            self._parent._put_internal(item)
 
             # getter cannot be cancelled, we just removed done getters
             getter.set_result(self._parent._get())
@@ -302,7 +302,7 @@ class AsyncQueue:
             yield from waiter
 
         else:
-            self.__put_internal(item)
+            self._parent._put_internal(item)
 
     def put_nowait(self, item):
         """Put an item into the queue without blocking.
@@ -314,7 +314,7 @@ class AsyncQueue:
             assert self.empty(), ('queue non-empty, why are getters waiting?')
 
             getter = self._parent._getters.popleft()
-            self.__put_internal(item)
+            self._parent._put_internal(item)
 
             # getter cannot be cancelled, we just removed done getters
             getter.set_result(self._parent._get())
@@ -323,7 +323,7 @@ class AsyncQueue:
               self._parent._maxsize <= self.qsize()):
             raise AsyncQueueFull
         else:
-            self.__put_internal(item)
+            self._parent._put_internal(item)
 
     @asyncio.coroutine
     def get(self):
@@ -337,7 +337,7 @@ class AsyncQueue:
         if self._parent._putters:
             assert self.full(), 'queue not full, why are putters waiting?'
             item, putter = self._parent._putters.popleft()
-            self.__put_internal(item)
+            self._parent._put_internal(item)
 
             # When a getter runs and frees up a slot so this putter can
             # run, we need to defer the put for a tick to ensure that
@@ -365,7 +365,7 @@ class AsyncQueue:
         if self._parent._putters:
             assert self.full(), 'queue not full, why are putters waiting?'
             item, putter = self._parent._putters.popleft()
-            self.__put_internal(item)
+            self._parent._put_internal(item)
             # Wake putter on next tick.
 
             # getter cannot be cancelled, we just removed done putters
