@@ -234,8 +234,8 @@ class QueueGetTests(_QueueTestBase):
         self.assertEqual(1, q.get_nowait())
 
     def test_nonblocking_get_exception(self):
-        q = asyncio.Queue(loop=self.loop)
-        self.assertRaises(asyncio.QueueEmpty, q.get_nowait)
+        _q = mixedqueue.Queue(loop=self.loop)
+        self.assertRaises(asyncio.QueueEmpty, _q.async_queue.get_nowait)
 
     def test_get_cancelled(self):
 
@@ -266,7 +266,8 @@ class QueueGetTests(_QueueTestBase):
         self.assertAlmostEqual(0.06, loop.time())
 
     def test_get_cancelled_race(self):
-        q = asyncio.Queue(loop=self.loop)
+        _q = mixedqueue.Queue(loop=self.loop)
+        q = _q.async_queue
 
         t1 = asyncio.Task(q.get(), loop=self.loop)
         t2 = asyncio.Task(q.get(), loop=self.loop)
@@ -280,7 +281,9 @@ class QueueGetTests(_QueueTestBase):
         self.assertEqual(t2.result(), 'a')
 
     def test_get_with_waiting_putters(self):
-        q = asyncio.Queue(loop=self.loop, maxsize=1)
+        _q = mixedqueue.Queue(loop=self.loop, maxsize=1)
+        q = _q.async_queue
+
         asyncio.Task(q.put('a'), loop=self.loop)
         asyncio.Task(q.put('b'), loop=self.loop)
         test_utils.run_briefly(self.loop)
@@ -496,7 +499,7 @@ class _QueueJoinTestMixin:
 
 
 class QueueJoinTests(_QueueJoinTestMixin, _QueueTestBase):
-    q_class = asyncio.Queue
+    q_class = mixedqueue.Queue
 
 
 # class LifoQueueJoinTests(_QueueJoinTestMixin, _QueueTestBase):

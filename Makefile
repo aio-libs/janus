@@ -4,5 +4,8 @@ develop:
 flake:
 	flake8 mixedqueue tests
 
-test:
+test: flake develop
 	py.test tests
+
+vtest: flake develop
+	py.test -v tests

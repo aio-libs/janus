@@ -11,8 +11,10 @@ import mixedqueue
 
 QUEUE_SIZE = 5
 
+
 def qfull(q):
     return q._maxsize > 0 and q.qsize() == q._maxsize
+
 
 # A thread to run a function that unclogs a blocked Queue.
 class _TriggerThread(threading.Thread):
@@ -66,15 +68,16 @@ class BlockingTestMixin:
         if not self.t.startedEvent.is_set():
             self.fail("blocking function '%r' appeared not to block" %
                       block_func)
-        self.t.join(10) # make sure the thread terminates
+        self.t.join(10)  # make sure the thread terminates
         if self.t.is_alive():
             self.fail("trigger function '%r' appeared to not return" %
                       trigger_func)
         return self.result
 
     # Call this instead if block_func is supposed to raise an exception.
-    def do_exceptional_blocking_test(self,block_func, block_args, trigger_func,
-                                   trigger_args, expected_exception_class):
+    def do_exceptional_blocking_test(self, block_func, block_args,
+                                     trigger_func, trigger_args,
+                                     expected_exception_class):
         self.t = _TriggerThread(trigger_func, trigger_args)
         self.t.start()
         try:
@@ -84,12 +87,12 @@ class BlockingTestMixin:
                 raise
             else:
                 self.fail("expected exception of kind %r" %
-                                 expected_exception_class)
+                          expected_exception_class)
         finally:
             self.t.join(10) # make sure the thread terminates
             if self.t.is_alive():
                 self.fail("trigger function '%r' appeared to not return" %
-                                 trigger_func)
+                          trigger_func)
             if not self.t.startedEvent.is_set():
                 self.fail("trigger thread ended but event never set")
 

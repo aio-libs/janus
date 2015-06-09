@@ -1,10 +1,13 @@
 import asyncio
 
+from heapq import heappush, heappop
 import threading
 
 
 from collections import deque
 from queue import Empty as SyncQueueEmpty, Full as SyncQueueFull
+from asyncio import (QueueEmpty as AsyncQueueEmpty,
+                     QueueFull as AsyncQueueFull)
 from time import monotonic
 
 
@@ -34,6 +37,10 @@ class Queue:
 
         self._sync_queue = SyncQueue(self)
         self._async_queue = AsyncQueue(self)
+
+    @property
+    def maxsize(self):
+        return self._maxsize
 
     @property
     def sync_queue(self):
@@ -77,9 +84,14 @@ class SyncQueue:
         self._sync_not_full = parent._sync_not_full
         self._sync_all_tasks_done = parent._sync_all_tasks_done
         self._unfinished_tasks = 0
+
         self._qsize = parent._qsize
         self._put = parent._put
         self._get = parent._get
+
+    @property
+    def maxsize(self):
+        return self._maxsize
 
     def task_done(self):
         '''Indicate that a formerly enqueued task is complete.
@@ -118,8 +130,7 @@ class SyncQueue:
 
     def qsize(self):
         '''Return the approximate size of the queue (not reliable!).'''
-        with self._sync_mutex:
-            return self._qsize()
+        return self._qsize()
 
     def empty(self):
         '''Return True if the queue is empty, False otherwise (not reliable!).
@@ -132,8 +143,7 @@ class SyncQueue:
         To create code that needs to wait for all queued tasks to be
         completed, the preferred technique is to use the join() method.
         '''
-        with self._sync_mutex:
-            return not self._qsize()
+        return not self._qsize()
 
     def full(self):
         '''Return True if the queue is full, False otherwise (not reliable!).
@@ -143,8 +153,7 @@ class SyncQueue:
         condition where a queue can shrink before the result of full() or
         qsize() can be used.
         '''
-        with self._sync_mutex:
-            return 0 < self._maxsize <= self._qsize()
+        return 0 < self._maxsize <= self._qsize()
 
     def put(self, item, block=True, timeout=None):
         '''Put an item into the queue.
@@ -244,6 +253,14 @@ class AsyncQueue:
         self._async_all_tasks_done = parent._async_all_tasks_done
         self._unfinished_tasks = 0
 
+        self._qsize = parent._qsize
+        self._put = parent._put
+        self._get = parent._get
+
+    @property
+    def maxsize(self):
+        return self._maxsize
+
     def task_done(self):
         '''Indicate that a formerly enqueued task is complete.
 
@@ -282,8 +299,7 @@ class AsyncQueue:
 
     def qsize(self):
         '''Return the approximate size of the queue (not reliable!).'''
-        with self._sync_mutex:
-            return self._qsize()
+        return self._qsize()
 
     def empty(self):
         '''Return True if the queue is empty, False otherwise (not reliable!).
@@ -296,8 +312,7 @@ class AsyncQueue:
         To create code that needs to wait for all queued tasks to be
         completed, the preferred technique is to use the join() method.
         '''
-        with self._sync_mutex:
-            return not self._qsize()
+        return not self._qsize()
 
     def full(self):
         '''Return True if the queue is full, False otherwise (not reliable!).
@@ -307,87 +322,69 @@ class AsyncQueue:
         condition where a queue can shrink before the result of full() or
         qsize() can be used.
         '''
-        with self._sync_mutex:
-            return 0 < self._maxsize <= self._qsize()
+        return 0 < self._maxsize <= self._qsize()
 
+    @asyncio.coroutine
     def put(self, item, block=True, timeout=None):
-        '''Put an item into the queue.
+        """Put an item into the queue.
 
-        If optional args 'block' is true and 'timeout' is None (the default),
-        block if necessary until a free slot is available. If 'timeout' is
-        a non-negative number, it blocks at most 'timeout' seconds and raises
-        the Full exception if no free slot was available within that time.
-        Otherwise ('block' is false), put an item on the queue if a free slot
-        is immediately available, else raise the Full exception ('timeout'
-        is ignored in that case).
-        '''
-        with self._not_full:
+        Put an item into the queue. If the queue is full, wait until a free
+        slot is available before adding item.
+
+        This method is a coroutine.
+        """
+        with (yield from self._async_not_full):
             if self._maxsize > 0:
-                if not block:
-                    if self._qsize() >= self._maxsize:
-                        raise SyncQueueFull
-                elif timeout is None:
-                    while self._qsize() >= self._maxsize:
-                        self._not_full.wait()
-                elif timeout < 0:
-                    raise ValueError("'timeout' must be a non-negative number")
-                else:
-                    endtime = monotonic() + timeout
-                    while self._qsize() >= self._maxsize:
-                        remaining = endtime - monotonic()
-                        if remaining <= 0.0:
-                            raise SyncQueueFull
-                        self._not_full.wait(remaining)
+                while self._qsize() >= self._maxsize:
+                    yield from self._async_not_full.wait()
+
             self._put(item)
             self._unfinished_tasks += 1
-            self._not_empty.notify()
+            self._async_not_empty.notify()
 
-    def get(self, block=True, timeout=None):
-        '''Remove and return an item from the queue.
+    @asyncio.coroutine
+    def get(self):
+        """Remove and return an item from the queue.
 
-        If optional args 'block' is true and 'timeout' is None (the default),
-        block if necessary until an item is available. If 'timeout' is
-        a non-negative number, it blocks at most 'timeout' seconds and raises
-        the Empty exception if no item was available within that time.
-        Otherwise ('block' is false), return an item if one is immediately
-        available, else raise the Empty exception ('timeout' is ignored
-        in that case).
-        '''
-        with self._not_empty:
-            if not block:
-                if not self._qsize():
-                    raise SyncQueueEmpty
-            elif timeout is None:
-                while not self._qsize():
-                    self.not_empty.wait()
-            elif timeout < 0:
-                raise ValueError("'timeout' must be a non-negative number")
-            else:
-                endtime = monotonic() + timeout
-                while not self._qsize():
-                    remaining = endtime - monotonic()
-                    if remaining <= 0.0:
-                        raise SyncQueueEmpty
-                    self._not_empty.wait(remaining)
+        If queue is empty, wait until an item is available.
+
+        This method is a coroutine.
+        """
+        with (yield from self._async_not_empty):
+            while not self._qsize():
+                yield from self._async_not_empty.wait()
+
             item = self._get()
-            self._not_full.notify()
+            self._async_not_full.notify()
             return item
 
     def put_nowait(self, item):
-        '''Put an item into the queue without blocking.
+        """Put an item into the queue without blocking.
 
-        Only enqueue the item if a free slot is immediately available.
-        Otherwise raise the Full exception.
-        '''
-        return self.put(item, block=False)
+        If no free slot is immediately available, raise QueueFull.
+        """
+
+        with (yield from self._async_not_full):
+            if self._maxsize > 0:
+                if self._qsize() >= self._maxsize:
+                    raise AsyncQueueFull
+
+            self._put(item)
+            self._unfinished_tasks += 1
+            self._async_not_empty.notify()
 
     def get_nowait(self):
-        '''Remove and return an item from the queue without blocking.
+        """Remove and return an item from the queue.
 
-        Only get an item if one is immediately available. Otherwise
-        raise the Empty exception.
-        '''
-        return self.get(block=False)
+        Return an item if one is immediately available, else raise QueueEmpty.
+        """
+        with (yield from self._async_not_empty):
+            if not self._qsize():
+                raise AsyncQueueEmpty
+
+            item = self._get()
+            self._async_not_full.notify()
+            return item
 
     # Override these methods to implement other queue organizations
     # (e.g. stack or priority queue).
@@ -410,9 +407,11 @@ class AsyncQueue:
 
 
 class PriorityQueue(SyncQueue):
-    '''Variant of Queue that retrieves open entries in priority order (lowest first).
+    '''Variant of Queue that retrieves open entries in priority order
+    (lowest first).
 
     Entries are typically tuples of the form:  (priority number, data).
+
     '''
 
     def _init(self, maxsize):
