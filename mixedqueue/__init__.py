@@ -3,19 +3,16 @@ import asyncio
 from heapq import heappush, heappop
 import threading
 
-
 from collections import deque
 from queue import Empty as SyncQueueEmpty, Full as SyncQueueFull
-from asyncio import (QueueEmpty as AsyncQueueEmpty,
-                     QueueFull as AsyncQueueFull)
+from asyncio import (QueueEmpty as AsyncQueueEmpty, QueueFull as
+                     AsyncQueueFull)
 from time import monotonic
-
 
 __version__ = '0.0.1'
 
 
 class Queue:
-
     def __init__(self, maxsize=0, *, loop=None):
         if loop is None:
             loop = asyncio.get_event_loop()
@@ -70,7 +67,6 @@ class Queue:
 
 
 class SyncQueue:
-
     '''Create a queue object with a given maximum size.
 
     If maxsize is <= 0, the queue size is infinite.
@@ -236,7 +232,6 @@ class SyncQueue:
 
 
 class AsyncQueue:
-
     '''Create a queue object with a given maximum size.
 
     If maxsize is <= 0, the queue size is infinite.
