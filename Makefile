@@ -9,3 +9,6 @@ test: flake develop
 
 vtest: flake develop
 	py.test -v tests
+
+yapf:
+	yapf -ri .
