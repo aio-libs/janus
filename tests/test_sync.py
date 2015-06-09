@@ -13,7 +13,7 @@ QUEUE_SIZE = 5
 
 
 def qfull(q):
-    return q._maxsize > 0 and q.qsize() == q._maxsize
+    return q._parent._maxsize > 0 and q.qsize() == q._parent._maxsize
 
 
 # A thread to run a function that unclogs a blocked Queue.

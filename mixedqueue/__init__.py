@@ -22,6 +22,8 @@ class Queue:
 
         self._init(maxsize)
 
+        self._unfinished_tasks = 0
+
         self._mutex = threading.Lock()
         self._not_empty = threading.Condition(self._mutex)
         self._not_full = threading.Condition(self._mutex)
@@ -68,21 +70,11 @@ class SyncQueue:
     '''
 
     def __init__(self, parent):
-        self._maxsize = parent._maxsize
-
-        self._mutex = parent._mutex
-        self._not_empty = parent._not_empty
-        self._not_full = parent._not_full
-        self._all_tasks_done = parent._all_tasks_done
-        self._unfinished_tasks = 0
-
-        self._qsize = parent._qsize
-        self._put = parent._put
-        self._get = parent._get
+        self._parent = parent
 
     @property
     def maxsize(self):
-        return self._maxsize
+        return self._parent._maxsize
 
     def task_done(self):
         '''Indicate that a formerly enqueued task is complete.
@@ -98,13 +90,13 @@ class SyncQueue:
         Raises a ValueError if called more times than there were items
         placed in the queue.
         '''
-        with self._all_tasks_done:
-            unfinished = self._unfinished_tasks - 1
+        with self._parent._all_tasks_done:
+            unfinished = self._parent._unfinished_tasks - 1
             if unfinished <= 0:
                 if unfinished < 0:
                     raise ValueError('task_done() called too many times')
-                self._all_tasks_done.notify_all()
-            self._unfinished_tasks = unfinished
+                self._parent._all_tasks_done.notify_all()
+            self._parent._unfinished_tasks = unfinished
 
     def join(self):
         '''Blocks until all items in the Queue have been gotten and processed.
@@ -115,13 +107,13 @@ class SyncQueue:
 
         When the count of unfinished tasks drops to zero, join() unblocks.
         '''
-        with self._all_tasks_done:
-            while self._unfinished_tasks:
-                self._all_tasks_done.wait()
+        with self._parent._all_tasks_done:
+            while self._parent._unfinished_tasks:
+                self._parent._all_tasks_done.wait()
 
     def qsize(self):
         '''Return the approximate size of the queue (not reliable!).'''
-        return self._qsize()
+        return self._parent._qsize()
 
     def empty(self):
         '''Return True if the queue is empty, False otherwise (not reliable!).
@@ -134,7 +126,7 @@ class SyncQueue:
         To create code that needs to wait for all queued tasks to be
         completed, the preferred technique is to use the join() method.
         '''
-        return not self._qsize()
+        return not self._parent._qsize()
 
     def full(self):
         '''Return True if the queue is full, False otherwise (not reliable!).
@@ -144,7 +136,7 @@ class SyncQueue:
         condition where a queue can shrink before the result of full() or
         qsize() can be used.
         '''
-        return 0 < self._maxsize <= self._qsize()
+        return 0 < self._parent._maxsize <= self._parent._qsize()
 
     def put(self, item, block=True, timeout=None):
         '''Put an item into the queue.
@@ -157,26 +149,26 @@ class SyncQueue:
         is immediately available, else raise the Full exception ('timeout'
         is ignored in that case).
         '''
-        with self._not_full:
-            if self._maxsize > 0:
+        with self._parent._not_full:
+            if self._parent._maxsize > 0:
                 if not block:
-                    if self._qsize() >= self._maxsize:
+                    if self._parent._qsize() >= self._parent._maxsize:
                         raise SyncQueueFull
                 elif timeout is None:
-                    while self._qsize() >= self._maxsize:
-                        self._not_full.wait()
+                    while self._parent._qsize() >= self._parent._maxsize:
+                        self._parent._not_full.wait()
                 elif timeout < 0:
                     raise ValueError("'timeout' must be a non-negative number")
                 else:
                     endtime = monotonic() + timeout
-                    while self._qsize() >= self._maxsize:
+                    while self._parent._qsize() >= self._parent._maxsize:
                         remaining = endtime - monotonic()
                         if remaining <= 0.0:
                             raise SyncQueueFull
-                        self._not_full.wait(remaining)
-            self._put(item)
-            self._unfinished_tasks += 1
-            self._not_empty.notify()
+                        self._parent._not_full.wait(remaining)
+            self._parent._put(item)
+            self._parent._unfinished_tasks += 1
+            self._parent._not_empty.notify()
 
     def get(self, block=True, timeout=None):
         '''Remove and return an item from the queue.
@@ -189,24 +181,24 @@ class SyncQueue:
         available, else raise the Empty exception ('timeout' is ignored
         in that case).
         '''
-        with self._not_empty:
+        with self._parent._not_empty:
             if not block:
-                if not self._qsize():
+                if not self._parent._qsize():
                     raise SyncQueueEmpty
             elif timeout is None:
-                while not self._qsize():
-                    self._not_empty.wait()
+                while not self._parent._qsize():
+                    self._parent._not_empty.wait()
             elif timeout < 0:
                 raise ValueError("'timeout' must be a non-negative number")
             else:
                 endtime = monotonic() + timeout
-                while not self._qsize():
+                while not self._parent._qsize():
                     remaining = endtime - monotonic()
                     if remaining <= 0.0:
                         raise SyncQueueEmpty
-                    self._not_empty.wait(remaining)
-            item = self._get()
-            self._not_full.notify()
+                    self._parent._not_empty.wait(remaining)
+            item = self._parent._get()
+            self._parent._not_full.notify()
             return item
 
     def put_nowait(self, item):
@@ -240,10 +232,10 @@ class AsyncQueue:
         self._getters = deque()
         # Pairs of (item, Future).
         self._putters = deque()
-        self._unfinished_tasks = 0
         self._finished = asyncio.Event(loop=self._loop)
         self._finished.set()
 
+        self._unfinished_tasks = 0
         self._qsize = parent._qsize
         self._put = parent._put
         self._get = parent._get
