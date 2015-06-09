@@ -4,7 +4,6 @@ import asyncio
 import unittest
 
 from asyncio import test_utils
-from unittest import mock
 
 import mixedqueue
 
@@ -70,19 +69,6 @@ class QueueBasicTests(_QueueTestBase):
         q = _q.async_queue
         q.put_nowait(1)
         self.assertTrue('_queue=[1]' in fn(q))
-
-    def test_ctor_loop(self):
-        loop = mock.Mock()
-        q = mixedqueue.Queue(loop=loop)
-        self.assertIs(q._loop, loop)
-
-        q = mixedqueue.Queue(loop=self.loop)
-        self.assertIs(q._loop, self.loop)
-
-    def test_ctor_noloop(self):
-        asyncio.set_event_loop(self.loop)
-        q = mixedqueue.Queue()
-        self.assertIs(q._loop, self.loop)
 
     # def test_repr(self):
     #     self._test_repr_or_str(repr, True)
