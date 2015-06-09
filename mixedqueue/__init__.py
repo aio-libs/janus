@@ -29,10 +29,9 @@ class Queue:
         self._sync_not_full = threading.Condition(self._sync_mutex)
         self._all_tasks_done = threading.Condition(self._sync_mutex)
 
-        # Futures.
-        self._getters = deque()
-        # Pairs of (item, Future).
-        self._putters = deque()
+        self._async_mutex = asyncio.Lock(loop=loop)
+        self._async_not_empty = asyncio.Condition(self._async_mutex, loop=loop)
+        self._async_not_full = asyncio.Condition(self._async_mutex, loop=loop)
         self._finished = asyncio.Event(loop=self._loop)
         self._finished.set()
 
@@ -69,20 +68,46 @@ class Queue:
     def _get(self):
         return self._queue.popleft()
 
-    def _consume_done_getters(self):
-        # Delete waiters at the head of the get() queue who've timed out.
-        while self._getters and self._getters[0].done():
-            self._getters.popleft()
-
-    def _consume_done_putters(self):
-        # Delete waiters at the head of the put() queue who've timed out.
-        while self._putters and self._putters[0][1].done():
-            self._putters.popleft()
-
     def _put_internal(self, item):
         self._put(item)
         self._unfinished_tasks += 1
         self._finished.clear()
+
+    def _notify_sync_not_empty(self):
+        def f():
+            with self._sync_not_empty:
+                self._sync_not_empty.notify()
+        self._loop.run_in_executor(None, f)
+
+    def _notify_sync_not_full(self):
+        def f():
+            with self._sync_not_full:
+                self._sync_not_full.notify()
+        self._loop.run_in_executor(None, f)
+
+    def _notify_async_not_empty(self, *, threadsafe):
+        @asyncio.coroutine
+        def f():
+            with (yield from self._async_not_empty):
+                self._async_not_empty.notify()
+
+        task = asyncio.async(f(), loop=self._loop)
+        if threadsafe:
+            self._loop.call_soon_threadsafe(task)
+        else:
+            self._loop.call_soon(task)
+
+    def _notify_async_not_full(self, *, threadsafe):
+        @asyncio.coroutine
+        def f():
+            with (yield from self._async_not_full):
+                self._async_not_full.notify()
+
+        task = asyncio.async(f(), loop=self._loop)
+        if threadsafe:
+            self._loop.call_soon_threadsafe(task)
+        else:
+            self._loop.call_soon(task)
 
 
 class SyncQueue:
@@ -284,48 +309,42 @@ class AsyncQueue:
 
         This method is a coroutine.
         """
-        self._parent._consume_done_getters()
-        if self._parent._getters:
-            assert not self._parent._queue, (
-                'queue non-empty, why are getters waiting?'
-            )
+        with (yield from self._parent._async_not_full):
+            self._parent._sync_mutex.acquire()
+            locked = True
+            try:
+                if self._parent._maxsize > 0:
+                    do_wait = True
+                    while do_wait:
+                        do_wait = (self._parent._qsize() >=
+                                   self._parent._maxsize)
+                        if do_wait:
+                            locked = False
+                            self._parent._sync_mutex.release()
+                            yield from self._parent._async_not_full.wait()
+                            self._parent._sync_mutex.acquire()
+                            locked = True
 
-            getter = self._parent._getters.popleft()
-            self._parent._put_internal(item)
-
-            # getter cannot be cancelled, we just removed done getters
-            getter.set_result(self._parent._get())
-
-        elif (self._parent._maxsize > 0 and
-              self._parent._maxsize <= self.qsize()):
-            waiter = asyncio.Future(loop=self._parent._loop)
-
-            self._parent._putters.append((item, waiter))
-            yield from waiter
-
-        else:
-            self._parent._put_internal(item)
+                self._parent._put_internal(item)
+                self._parent._async_not_empty.notify()
+                self._parent._notify_sync_not_empty()
+            finally:
+                if locked:
+                    self._parent._sync_mutex.release()
 
     def put_nowait(self, item):
         """Put an item into the queue without blocking.
 
         If no free slot is immediately available, raise QueueFull.
         """
-        self._parent._consume_done_getters()
-        if self._parent._getters:
-            assert self.empty(), ('queue non-empty, why are getters waiting?')
+        with self._parent._sync_mutex:
+            if self._parent._maxsize > 0:
+                if self._parent._qsize() >= self._parent._maxsize:
+                    raise AsyncQueueFull
 
-            getter = self._parent._getters.popleft()
             self._parent._put_internal(item)
-
-            # getter cannot be cancelled, we just removed done getters
-            getter.set_result(self._parent._get())
-
-        elif (self._parent._maxsize > 0 and
-              self._parent._maxsize <= self.qsize()):
-            raise AsyncQueueFull
-        else:
-            self._parent._put_internal(item)
+            self._parent._notify_async_not_empty(threadsafe=False)
+            self._parent._notify_sync_not_empty()
 
     @asyncio.coroutine
     def get(self):
@@ -335,50 +354,42 @@ class AsyncQueue:
 
         This method is a coroutine.
         """
-        self._parent._consume_done_putters()
-        if self._parent._putters:
-            assert self.full(), 'queue not full, why are putters waiting?'
-            item, putter = self._parent._putters.popleft()
-            self._parent._put_internal(item)
+        with (yield from self._parent._async_not_empty):
+            self._parent._sync_mutex.acquire
+            locked = True
+            try:
+                do_wait = True
+                while do_wait:
+                    do_wait = self._parent._qsize() == 0
 
-            # When a getter runs and frees up a slot so this putter can
-            # run, we need to defer the put for a tick to ensure that
-            # getters and putters alternate perfectly. See
-            # ChannelTest.test_wait.
-            self._parent._loop.call_soon(putter._set_result_unless_cancelled,
-                                         None)
+                    if do_wait:
+                        locked = False
+                        self._parent._sync_mutex.release()
+                        yield from self._parent._async_not_empty.wait()
+                        self._parent._sync_mutex.acquire()
+                        locked = False
 
-            return self._parent._get()
-
-        elif self.qsize():
-            return self._parent._get()
-        else:
-            waiter = asyncio.Future(loop=self._parent._loop)
-
-            self._parent._getters.append(waiter)
-            return (yield from waiter)
+                item = self._parent._get()
+                self._parent._async_not_empty.notify()
+                self._parent._notify_sync_not_empty()
+                return item
+            finally:
+                if locked:
+                    self._parent._sync_mutex.release()
 
     def get_nowait(self):
         """Remove and return an item from the queue.
 
         Return an item if one is immediately available, else raise QueueEmpty.
         """
-        self._parent._consume_done_putters()
-        if self._parent._putters:
-            assert self.full(), 'queue not full, why are putters waiting?'
-            item, putter = self._parent._putters.popleft()
-            self._parent._put_internal(item)
-            # Wake putter on next tick.
+        with self._parent._sync_mutex:
+            if self._parent._qsize() == 0:
+                raise AsyncQueueEmpty
 
-            # getter cannot be cancelled, we just removed done putters
-            putter.set_result(None)
-
-            return self._parent._get()
-
-        elif self.qsize():
-            return self._parent._get()
-        else:
-            raise AsyncQueueEmpty
+            item = self._parent._get()
+            self._parent._notify_async_not_full(threadsafe=False)
+            self._parent._notify_sync_not_full()
+            return item
 
     def task_done(self):
         """Indicate that a formerly enqueued task is complete.
