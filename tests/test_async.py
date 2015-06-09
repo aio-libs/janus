@@ -1,10 +1,12 @@
 """Tests for queues.py"""
 
+import asyncio
 import unittest
+
+from asyncio import test_utils
 from unittest import mock
 
-import asyncio
-from asyncio import test_utils
+import mixedqueue
 
 
 class _QueueTestBase(test_utils.TestCase):
@@ -30,14 +32,16 @@ class QueueBasicTests(_QueueTestBase):
 
         loop = self.new_test_loop(gen)
 
-        q = asyncio.Queue(loop=loop)
+        _q = mixedqueue.Queue(loop=loop)
+        q = _q.async_queue
         self.assertTrue(fn(q).startswith('<Queue'), fn(q))
         id_is_present = hex(id(q)) in fn(q)
         self.assertEqual(expect_id, id_is_present)
 
         @asyncio.coroutine
         def add_getter():
-            q = asyncio.Queue(loop=loop)
+            _q = mixedqueue.Queue(loop=loop)
+            q = _q.async_queue
             # Start a task that waits to get.
             asyncio.Task(q.get(), loop=loop)
             # Let it start waiting.
@@ -50,7 +54,8 @@ class QueueBasicTests(_QueueTestBase):
 
         @asyncio.coroutine
         def add_putter():
-            q = asyncio.Queue(maxsize=1, loop=loop)
+            _q = mixedqueue.Queue(maxsize=1, loop=loop)
+            q = _q.async_queue
             q.put_nowait(1)
             # Start a task that waits to put.
             asyncio.Task(q.put(2), loop=loop)
@@ -62,21 +67,22 @@ class QueueBasicTests(_QueueTestBase):
 
         loop.run_until_complete(add_putter())
 
-        q = asyncio.Queue(loop=loop)
+        _q = mixedqueue.Queue(loop=loop)
+        q = _q.async_queue
         q.put_nowait(1)
         self.assertTrue('_queue=[1]' in fn(q))
 
     def test_ctor_loop(self):
         loop = mock.Mock()
-        q = asyncio.Queue(loop=loop)
+        q = mixedqueue.Queue(loop=loop)
         self.assertIs(q._loop, loop)
 
-        q = asyncio.Queue(loop=self.loop)
+        q = mixedqueue.Queue(loop=self.loop)
         self.assertIs(q._loop, self.loop)
 
     def test_ctor_noloop(self):
         asyncio.set_event_loop(self.loop)
-        q = asyncio.Queue()
+        q = mixedqueue.Queue()
         self.assertIs(q._loop, self.loop)
 
     def test_repr(self):
@@ -86,7 +92,8 @@ class QueueBasicTests(_QueueTestBase):
         self._test_repr_or_str(str, False)
 
     def test_empty(self):
-        q = asyncio.Queue(loop=self.loop)
+        _q = mixedqueue.Queue(loop=self.loop)
+        q = _q.async_queue
         self.assertTrue(q.empty())
         q.put_nowait(1)
         self.assertFalse(q.empty())
@@ -94,15 +101,18 @@ class QueueBasicTests(_QueueTestBase):
         self.assertTrue(q.empty())
 
     def test_full(self):
-        q = asyncio.Queue(loop=self.loop)
+        _q = mixedqueue.Queue(loop=self.loop)
+        q = _q.async_queue
         self.assertFalse(q.full())
 
-        q = asyncio.Queue(maxsize=1, loop=self.loop)
+        _q = mixedqueue.Queue(maxsize=1, loop=self.loop)
+        q = _q.async_queue
         q.put_nowait(1)
         self.assertTrue(q.full())
 
     def test_order(self):
-        q = asyncio.Queue(loop=self.loop)
+        _q = mixedqueue.Queue(loop=self.loop)
+        q = _q.async_queue
         for i in [1, 3, 2]:
             q.put_nowait(i)
 
@@ -120,7 +130,8 @@ class QueueBasicTests(_QueueTestBase):
 
         loop = self.new_test_loop(gen)
 
-        q = asyncio.Queue(maxsize=2, loop=loop)
+        _q = mixedqueue.Queue(maxsize=2, loop=loop)
+        q = _q.async_queue
         self.assertEqual(2, q.maxsize)
         have_been_put = []
 
@@ -156,7 +167,8 @@ class QueueBasicTests(_QueueTestBase):
 class QueueGetTests(_QueueTestBase):
 
     def test_blocking_get(self):
-        q = asyncio.Queue(loop=self.loop)
+        _q = mixedqueue.Queue(loop=self.loop)
+        q = _q.async_queue
         q.put_nowait(1)
 
         @asyncio.coroutine
@@ -167,7 +179,8 @@ class QueueGetTests(_QueueTestBase):
         self.assertEqual(1, res)
 
     def test_get_with_putters(self):
-        q = asyncio.Queue(1, loop=self.loop)
+        _q = mixedqueue.Queue(1, loop=self.loop)
+        q = _q.async_queue
         q.put_nowait(1)
 
         waiter = asyncio.Future(loop=self.loop)
@@ -187,7 +200,8 @@ class QueueGetTests(_QueueTestBase):
 
         loop = self.new_test_loop(gen)
 
-        q = asyncio.Queue(loop=loop)
+        _q = mixedqueue.Queue(loop=loop)
+        q = _q.async_queue
         started = asyncio.Event(loop=loop)
         finished = False
 
@@ -214,7 +228,8 @@ class QueueGetTests(_QueueTestBase):
         self.assertAlmostEqual(0.01, loop.time())
 
     def test_nonblocking_get(self):
-        q = asyncio.Queue(loop=self.loop)
+        _q = mixedqueue.Queue(loop=self.loop)
+        q = _q.async_queue
         q.put_nowait(1)
         self.assertEqual(1, q.get_nowait())
 
@@ -233,7 +248,8 @@ class QueueGetTests(_QueueTestBase):
 
         loop = self.new_test_loop(gen)
 
-        q = asyncio.Queue(loop=loop)
+        _q = mixedqueue.Queue(loop=loop)
+        q = _q.async_queue
 
         @asyncio.coroutine
         def queue_get():
@@ -414,11 +430,13 @@ class _QueueJoinTestMixin:
     q_class = None
 
     def test_task_done_underflow(self):
-        q = self.q_class(loop=self.loop)
+        _q = self.q_class(loop=self.loop)
+        q = _q.async_queue
         self.assertRaises(ValueError, q.task_done)
 
     def test_task_done(self):
-        q = self.q_class(loop=self.loop)
+        _q = self.q_class(loop=self.loop)
+        q = _q.async_queue
         for i in range(100):
             q.put_nowait(i)
 
@@ -455,7 +473,8 @@ class _QueueJoinTestMixin:
         self.loop.run_until_complete(asyncio.wait(tasks, loop=self.loop))
 
     def test_join_empty_queue(self):
-        q = self.q_class(loop=self.loop)
+        _q = self.q_class(loop=self.loop)
+        q = _q.async_queue
 
         # Test that a queue join()s successfully, and before anything else
         # (done twice for insurance).
@@ -468,7 +487,8 @@ class _QueueJoinTestMixin:
         self.loop.run_until_complete(join())
 
     def test_format(self):
-        q = self.q_class(loop=self.loop)
+        _q = self.q_class(loop=self.loop)
+        q = _q.async_queue
         self.assertEqual(q._format(), 'maxsize=0')
 
         q._unfinished_tasks = 2
@@ -479,12 +499,12 @@ class QueueJoinTests(_QueueJoinTestMixin, _QueueTestBase):
     q_class = asyncio.Queue
 
 
-class LifoQueueJoinTests(_QueueJoinTestMixin, _QueueTestBase):
-    q_class = asyncio.LifoQueue
+# class LifoQueueJoinTests(_QueueJoinTestMixin, _QueueTestBase):
+#     q_class = asyncio.LifoQueue
 
 
-class PriorityQueueJoinTests(_QueueJoinTestMixin, _QueueTestBase):
-    q_class = asyncio.PriorityQueue
+# class PriorityQueueJoinTests(_QueueJoinTestMixin, _QueueTestBase):
+#     q_class = asyncio.PriorityQueue
 
 
 if __name__ == '__main__':

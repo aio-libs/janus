@@ -226,8 +226,6 @@ class SyncQueue:
         return self.get(block=False)
 
 
-
-
 class AsyncQueue:
 
     '''Create a queue object with a given maximum size.
@@ -235,9 +233,9 @@ class AsyncQueue:
     If maxsize is <= 0, the queue size is infinite.
     '''
 
-    def __init__(self, parent, loop):
+    def __init__(self, parent):
         self._maxsize = parent._maxsize
-        self._loop = loop
+        self._loop = parent._loop
 
         self._async_mutex = parent._async_mutex
         self._sync_mutex = parent._sync_mutex
