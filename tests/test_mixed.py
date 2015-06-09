@@ -38,3 +38,86 @@ class TestMixedMode(unittest.TestCase):
     def test_maxsize_default(self):
         q = mixedqueue.Queue(loop=self.loop)
         self.assertIs(0, q.maxsize)
+
+    def test_sync_put_async_get(self):
+        q = mixedqueue.Queue(loop=self.loop)
+
+        def threaded():
+            for i in range(5):
+                q.sync_queue.put(i)
+
+        @asyncio.coroutine
+        def go():
+            f = self.loop.run_in_executor(None, threaded)
+            for i in range(5):
+                val = yield from q.async_queue.get()
+                self.assertEqual(val, i)
+
+            self.assertTrue(q.async_queue.empty())
+
+            yield from f
+
+        for i in range(3):
+            self.loop.run_until_complete(go())
+
+    def test_async_put_sync_get(self):
+        q = mixedqueue.Queue(loop=self.loop)
+
+        def threaded():
+            for i in range(5):
+                val = q.sync_queue.get()
+                self.assertEqual(val, i)
+
+        @asyncio.coroutine
+        def go():
+            f = self.loop.run_in_executor(None, threaded)
+            for i in range(5):
+                yield from q.async_queue.put(i)
+
+            yield from f
+            self.assertTrue(q.async_queue.empty())
+
+        for i in range(3):
+            self.loop.run_until_complete(go())
+
+    def xtest_sync_join_async_done(self):
+        q = mixedqueue.Queue(loop=self.loop)
+
+        def threaded():
+            for i in range(5):
+                q.sync_queue.put(i)
+
+        @asyncio.coroutine
+        def go():
+            f = self.loop.run_in_executor(None, threaded)
+            for i in range(5):
+                val = yield from q.async_queue.get()
+                self.assertEqual(val, i)
+
+            self.assertTrue(q.async_queue.empty())
+
+            yield from f
+
+        for i in range(3):
+            self.loop.run_until_complete(go())
+
+    def xtest_async_join_sync_done(self):
+        q = mixedqueue.Queue(loop=self.loop)
+
+        def threaded():
+            for i in range(5):
+                q.sync_queue.put(i)
+
+        @asyncio.coroutine
+        def go():
+            f = self.loop.run_in_executor(None, threaded)
+            for i in range(5):
+                val = yield from q.async_queue.get()
+                self.assertEqual(val, i)
+
+            self.assertTrue(q.async_queue.empty())
+
+            yield from f
+
+        for i in range(3):
+            self.loop.run_until_complete(go())

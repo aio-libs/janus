@@ -118,6 +118,8 @@ class SyncQueue:
                 if unfinished < 0:
                     raise ValueError('task_done() called too many times')
                 self._parent._all_tasks_done.notify_all()
+                self._parent._loop.call_soon_threadsafe(
+                    self._parent._finished.set)
             self._parent._unfinished_tasks = unfinished
 
     def join(self):
@@ -392,11 +394,13 @@ class AsyncQueue:
         Raises ValueError if called more times than there were items placed in
         the queue.
         """
-        if self._parent._unfinished_tasks <= 0:
-            raise ValueError('task_done() called too many times')
-        self._parent._unfinished_tasks -= 1
-        if self._parent._unfinished_tasks == 0:
-            self._parent._finished.set()
+        with self._parent._all_tasks_done:
+            if self._parent._unfinished_tasks <= 0:
+                raise ValueError('task_done() called too many times')
+            self._parent._unfinished_tasks -= 1
+            if self._parent._unfinished_tasks == 0:
+                self._parent._finished.set()
+                self._parent._all_tasks_done.notify_all()
 
     @asyncio.coroutine
     def join(self):
@@ -407,7 +411,10 @@ class AsyncQueue:
         indicate that the item was retrieved and all work on it is complete.
         When the count of unfinished tasks drops to zero, join() unblocks.
         """
-        if self._parent._unfinished_tasks > 0:
+        while True:
+            with self._parent._mutex:
+                if self._parent._unfinished_tasks == 0:
+                    break
             yield from self._parent._finished.wait()
 
 
