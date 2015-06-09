@@ -244,6 +244,11 @@ class BaseQueueTestMixin(BlockingTestMixin):
         with self.assertRaises(queue.Full):
             q.put_nowait(4)
 
+    def test_maxsize(self):
+        # Test to make sure a queue task completed successfully.
+        q = self.type2test(maxsize=5, loop=self.loop).sync_queue
+        self.assertEqual(q.maxsize, 5)
+
 
 class QueueTest(BaseQueueTestMixin, unittest.TestCase):
     type2test = mixedqueue.Queue
