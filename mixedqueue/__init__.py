@@ -355,7 +355,7 @@ class AsyncQueue:
         This method is a coroutine.
         """
         with (yield from self._parent._async_not_empty):
-            self._parent._sync_mutex.acquire
+            self._parent._sync_mutex.acquire()
             locked = True
             try:
                 do_wait = True
