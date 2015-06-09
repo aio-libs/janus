@@ -24,10 +24,10 @@ class Queue:
 
         self._unfinished_tasks = 0
 
-        self._mutex = threading.Lock()
-        self._not_empty = threading.Condition(self._mutex)
-        self._not_full = threading.Condition(self._mutex)
-        self._all_tasks_done = threading.Condition(self._mutex)
+        self._sync_mutex = threading.Lock()
+        self._sync_not_empty = threading.Condition(self._sync_mutex)
+        self._sync_not_full = threading.Condition(self._sync_mutex)
+        self._all_tasks_done = threading.Condition(self._sync_mutex)
 
         # Futures.
         self._getters = deque()
@@ -173,14 +173,14 @@ class SyncQueue:
         is immediately available, else raise the Full exception ('timeout'
         is ignored in that case).
         '''
-        with self._parent._not_full:
+        with self._parent._sync_not_full:
             if self._parent._maxsize > 0:
                 if not block:
                     if self._parent._qsize() >= self._parent._maxsize:
                         raise SyncQueueFull
                 elif timeout is None:
                     while self._parent._qsize() >= self._parent._maxsize:
-                        self._parent._not_full.wait()
+                        self._parent._sync_not_full.wait()
                 elif timeout < 0:
                     raise ValueError("'timeout' must be a non-negative number")
                 else:
@@ -189,10 +189,10 @@ class SyncQueue:
                         remaining = endtime - monotonic()
                         if remaining <= 0.0:
                             raise SyncQueueFull
-                        self._parent._not_full.wait(remaining)
+                        self._parent._sync_not_full.wait(remaining)
             self._parent._put(item)
             self._parent._unfinished_tasks += 1
-            self._parent._not_empty.notify()
+            self._parent._sync_not_empty.notify()
 
     def get(self, block=True, timeout=None):
         '''Remove and return an item from the queue.
@@ -205,13 +205,13 @@ class SyncQueue:
         available, else raise the Empty exception ('timeout' is ignored
         in that case).
         '''
-        with self._parent._not_empty:
+        with self._parent._sync_not_empty:
             if not block:
                 if not self._parent._qsize():
                     raise SyncQueueEmpty
             elif timeout is None:
                 while not self._parent._qsize():
-                    self._parent._not_empty.wait()
+                    self._parent._sync_not_empty.wait()
             elif timeout < 0:
                 raise ValueError("'timeout' must be a non-negative number")
             else:
@@ -220,9 +220,9 @@ class SyncQueue:
                     remaining = endtime - monotonic()
                     if remaining <= 0.0:
                         raise SyncQueueEmpty
-                    self._parent._not_empty.wait(remaining)
+                    self._parent._sync_not_empty.wait(remaining)
             item = self._parent._get()
-            self._parent._not_full.notify()
+            self._parent._sync_not_full.notify()
             return item
 
     def put_nowait(self, item):
@@ -412,7 +412,7 @@ class AsyncQueue:
         When the count of unfinished tasks drops to zero, join() unblocks.
         """
         while True:
-            with self._parent._mutex:
+            with self._parent._sync_mutex:
                 if self._parent._unfinished_tasks == 0:
                     break
             yield from self._parent._finished.wait()
