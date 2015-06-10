@@ -125,3 +125,12 @@ class TestMixedMode(unittest.TestCase):
 
         for i in range(3):
             self.loop.run_until_complete(go())
+
+    def test_wait_without_closing(self):
+        q = mixedqueue.Queue(loop=self.loop)
+
+        with self.assertRaises(RuntimeError):
+            self.loop.run_until_complete(q.wait_closed())
+
+        q.close()
+        self.loop.run_until_complete(q.wait_closed())
