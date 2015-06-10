@@ -271,8 +271,7 @@ class QueueGetTests(_QueueTestBase):
         @asyncio.coroutine
         def g1():
             f1.set_result(None)
-            ret = yield from q.get()
-            return ret
+            yield from q.get()
 
         t1 = asyncio.Task(g1(), loop=self.loop)
         t2 = asyncio.Task(q.get(), loop=self.loop)
@@ -327,11 +326,6 @@ class QueuePutTests(_QueueTestBase):
         self.loop.run_until_complete(_q.wait_closed())
 
     def test_blocking_put_wait(self):
-        def gen():
-            when = yield
-            self.assertAlmostEqual(0.01, when)
-            yield 0.01
-
         _q = mixedqueue.Queue(maxsize=1, loop=self.loop)
         q = _q.async_queue
         started = asyncio.Event(loop=self.loop)
@@ -610,7 +604,3 @@ class LifoQueueJoinTests(_QueueJoinTestMixin, _QueueTestBase):
 
 class PriorityQueueJoinTests(_QueueJoinTestMixin, _QueueTestBase):
     q_class = mixedqueue.PriorityQueue
-
-
-if __name__ == '__main__':
-    unittest.main()
