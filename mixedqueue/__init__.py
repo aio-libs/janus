@@ -253,6 +253,7 @@ class SyncQueue:
             self._parent._put(item)
             self._parent._unfinished_tasks += 1
             self._parent._sync_not_empty.notify()
+            self._parent._notify_async_not_empty(threadsafe=True)
 
     def get(self, block=True, timeout=None):
         '''Remove and return an item from the queue.
@@ -283,6 +284,7 @@ class SyncQueue:
                     self._parent._sync_not_empty.wait(remaining)
             item = self._parent._get()
             self._parent._sync_not_full.notify()
+            self._parent._notify_async_not_full(threadsafe=True)
             return item
 
     def put_nowait(self, item):
