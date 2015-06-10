@@ -60,7 +60,7 @@ class TestMixedMode(unittest.TestCase):
         for i in range(3):
             self.loop.run_until_complete(go())
 
-    def xtest_async_put_sync_get(self):
+    def test_async_put_sync_get(self):
         q = mixedqueue.Queue(loop=self.loop)
 
         def threaded():
@@ -80,12 +80,13 @@ class TestMixedMode(unittest.TestCase):
         for i in range(3):
             self.loop.run_until_complete(go())
 
-    def xtest_sync_join_async_done(self):
+    def test_sync_join_async_done(self):
         q = mixedqueue.Queue(loop=self.loop)
 
         def threaded():
             for i in range(5):
                 q.sync_queue.put(i)
+            q.sync_queue.join()
 
         @asyncio.coroutine
         def go():
@@ -93,6 +94,7 @@ class TestMixedMode(unittest.TestCase):
             for i in range(5):
                 val = yield from q.async_queue.get()
                 self.assertEqual(val, i)
+                q.async_queue.task_done()
 
             self.assertTrue(q.async_queue.empty())
 
@@ -101,23 +103,25 @@ class TestMixedMode(unittest.TestCase):
         for i in range(3):
             self.loop.run_until_complete(go())
 
-    def xtest_async_join_sync_done(self):
+    def test_async_join_async_done(self):
         q = mixedqueue.Queue(loop=self.loop)
 
         def threaded():
             for i in range(5):
-                q.sync_queue.put(i)
+                val = q.sync_queue.get()
+                self.assertEqual(val, i)
+                q.sync_queue.task_done()
 
         @asyncio.coroutine
         def go():
             f = self.loop.run_in_executor(None, threaded)
             for i in range(5):
-                val = yield from q.async_queue.get()
-                self.assertEqual(val, i)
+                yield from q.async_queue.put(i)
 
-            self.assertTrue(q.async_queue.empty())
+            yield from q.async_queue.join()
 
             yield from f
+            self.assertTrue(q.async_queue.empty())
 
         for i in range(3):
             self.loop.run_until_complete(go())
