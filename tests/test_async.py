@@ -11,6 +11,10 @@ import mixedqueue
 class _QueueTestBase(test_utils.TestCase):
     def setUp(self):
         self.loop = self.new_test_loop()
+        asyncio.set_event_loop(None)
+
+    def tearDown(self):
+        self.loop.close()
 
 
 class QueueBasicTests(_QueueTestBase):
@@ -190,16 +194,9 @@ class QueueGetTests(_QueueTestBase):
         self.loop.run_until_complete(_q.wait_closed())
 
     def test_blocking_get_wait(self):
-        def gen():
-            when = yield
-            self.assertAlmostEqual(0.01, when)
-            yield 0.01
-
-        loop = self.new_test_loop(gen)
-
-        _q = mixedqueue.Queue(loop=loop)
+        _q = mixedqueue.Queue(loop=self.loop)
         q = _q.async_queue
-        started = asyncio.Event(loop=loop)
+        started = asyncio.Event(loop=self.loop)
         finished = False
 
         @asyncio.coroutine
@@ -212,17 +209,16 @@ class QueueGetTests(_QueueTestBase):
 
         @asyncio.coroutine
         def queue_put():
-            loop.call_later(0.01, q.put_nowait, 1)
-            queue_get_task = asyncio.Task(queue_get(), loop=loop)
+            self.loop.call_later(0.01, q.put_nowait, 1)
+            queue_get_task = asyncio.Task(queue_get(), loop=self.loop)
             yield from started.wait()
             self.assertFalse(finished)
             res = yield from queue_get_task
             self.assertTrue(finished)
             return res
 
-        res = loop.run_until_complete(queue_put())
+        res = self.loop.run_until_complete(queue_put())
         self.assertEqual(1, res)
-        self.assertAlmostEqual(0.01, loop.time())
 
         _q.close()
         self.loop.run_until_complete(_q.wait_closed())
