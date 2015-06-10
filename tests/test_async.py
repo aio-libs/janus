@@ -114,47 +114,38 @@ class QueueBasicTests(_QueueTestBase):
         self.loop.run_until_complete(_q.wait_closed())
 
     def test_maxsize(self):
-        def gen():
-            when = yield
-            self.assertAlmostEqual(0.01, when)
-            when = yield 0.01
-            self.assertAlmostEqual(0.02, when)
-            yield 0.01
-
-        loop = self.new_test_loop(gen)
-
-        _q = mixedqueue.Queue(maxsize=2, loop=loop)
+        _q = mixedqueue.Queue(maxsize=2, loop=self.loop)
         q = _q.async_queue
         self.assertEqual(2, q.maxsize)
         have_been_put = []
+
+        fut = asyncio.Future(loop=self.loop)
 
         @asyncio.coroutine
         def putter():
             for i in range(3):
                 yield from q.put(i)
                 have_been_put.append(i)
+                if i == q.maxsize -1:
+                    fut.set_result(None)
             return True
 
         @asyncio.coroutine
         def test():
-            t = asyncio.Task(putter(), loop=loop)
-            yield from asyncio.sleep(0.01, loop=loop)
+            t = asyncio.Task(putter(), loop=self.loop)
+            yield from fut
 
             # The putter is blocked after putting two items.
             self.assertEqual([0, 1], have_been_put)
             self.assertEqual(0, q.get_nowait())
 
             # Let the putter resume and put last item.
-            yield from asyncio.sleep(0.01, loop=loop)
+            yield from t
             self.assertEqual([0, 1, 2], have_been_put)
             self.assertEqual(1, q.get_nowait())
             self.assertEqual(2, q.get_nowait())
 
-            self.assertTrue(t.done())
-            self.assertTrue(t.result())
-
-        loop.run_until_complete(test())
-        self.assertAlmostEqual(0.02, loop.time())
+        self.loop.run_until_complete(test())
 
         _q.close()
         self.loop.run_until_complete(_q.wait_closed())
