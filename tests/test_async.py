@@ -436,18 +436,23 @@ class QueuePutTests(_QueueTestBase):
         put_b = asyncio.Task(q.put('b'), loop=self.loop)
         put_c = asyncio.Task(q.put('X'), loop=self.loop)
 
-        self.loop.run_until_complete(asyncio.sleep(0.01, loop=self.loop))
-        self.assertTrue(put_a.done())
+        self.loop.run_until_complete(put_a)
         self.assertFalse(put_b.done())
 
         put_c.cancel()
 
-        self.loop.run_until_complete(asyncio.sleep(0.01, loop=self.loop))
-        self.assertTrue(put_c.done())
-        self.assertEqual(q.get_nowait(), 'a')
-        self.assertEqual(q.get_nowait(), 'b')
+        with self.assertRaises(asyncio.CancelledError):
+            self.loop.run_until_complete(put_c)
 
-        self.loop.run_until_complete(put_b)
+        @asyncio.coroutine
+        def go():
+            a = yield from q.get()
+            self.assertEqual(a, 'a')
+            b = yield from q.get()
+            self.assertEqual(b, 'b')
+            self.assertTrue(put_b.done())
+
+        self.loop.run_until_complete(go())
 
         self.assertFalse(_q._sync_mutex.locked())
         _q.close()
