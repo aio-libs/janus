@@ -128,7 +128,7 @@ class QueueBasicTests(_QueueTestBase):
             for i in range(3):
                 yield from q.put(i)
                 have_been_put.append(i)
-                if i == q.maxsize -1:
+                if i == q.maxsize - 1:
                     fut.set_result(None)
             return True
 
@@ -243,12 +243,14 @@ class QueueGetTests(_QueueTestBase):
 
         @asyncio.coroutine
         def queue_get():
-            return (yield from asyncio.wait_for(q.get(), 0.051, loop=self.loop))
+            return (yield from asyncio.wait_for(q.get(), 0.051,
+                                                loop=self.loop))
 
         @asyncio.coroutine
         def test():
             get_task = asyncio.Task(queue_get(), loop=self.loop)
-            yield from asyncio.sleep(0.01, loop=self.loop)  # let the task start
+            yield from asyncio.sleep(0.01,
+                                     loop=self.loop)  # let the task start
             q.put_nowait(1)
             return (yield from get_task)
 
