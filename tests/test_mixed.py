@@ -134,3 +134,36 @@ class TestMixedMode(unittest.TestCase):
 
         q.close()
         self.loop.run_until_complete(q.wait_closed())
+
+    def test_modifying_forbidden_after_closing(self):
+        q = mixedqueue.Queue(loop=self.loop)
+        q.close()
+
+        with self.assertRaises(RuntimeError):
+            q.sync_queue.put(5)
+
+        with self.assertRaises(RuntimeError):
+            q.sync_queue.get()
+
+        with self.assertRaises(RuntimeError):
+            q.sync_queue.task_done()
+
+        with self.assertRaises(RuntimeError):
+            self.loop.run_until_complete(q.async_queue.put(5))
+
+        with self.assertRaises(RuntimeError):
+            q.async_queue.put_nowait(5)
+
+        with self.assertRaises(RuntimeError):
+            q.async_queue.get_nowait()
+
+        with self.assertRaises(RuntimeError):
+            self.loop.run_until_complete(q.sync_queue.task_done())
+
+        self.loop.run_until_complete(q.wait_closed())
+
+    def test_double_closing(self):
+        q = mixedqueue.Queue(loop=self.loop)
+        q.close()
+        q.close()
+        self.loop.run_until_complete(q.wait_closed())

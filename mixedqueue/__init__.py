@@ -144,6 +144,10 @@ class Queue:
         else:
             self._loop.call_soon(task_maker)
 
+    def _check_closing(self):
+        if self._closing:
+            raise RuntimeError('Modification of closed queue is forbidden')
+
 
 class SyncQueue:
     '''Create a queue object with a given maximum size.
@@ -172,6 +176,7 @@ class SyncQueue:
         Raises a ValueError if called more times than there were items
         placed in the queue.
         '''
+        self._parent._check_closing()
         with self._parent._all_tasks_done:
             unfinished = self._parent._unfinished_tasks - 1
             if unfinished <= 0:
@@ -233,6 +238,7 @@ class SyncQueue:
         is immediately available, else raise the Full exception ('timeout'
         is ignored in that case).
         '''
+        self._parent._check_closing()
         with self._parent._sync_not_full:
             if self._parent._maxsize > 0:
                 if not block:
@@ -266,6 +272,7 @@ class SyncQueue:
         available, else raise the Empty exception ('timeout' is ignored
         in that case).
         '''
+        self._parent._check_closing()
         with self._parent._sync_not_empty:
             if not block:
                 if not self._parent._qsize():
@@ -346,6 +353,7 @@ class AsyncQueue:
 
         This method is a coroutine.
         """
+        self._parent._check_closing()
         with (yield from self._parent._async_not_full):
             self._parent._sync_mutex.acquire()
             locked = True
@@ -375,6 +383,7 @@ class AsyncQueue:
 
         If no free slot is immediately available, raise QueueFull.
         """
+        self._parent._check_closing()
         with self._parent._sync_mutex:
             if self._parent._maxsize > 0:
                 if self._parent._qsize() >= self._parent._maxsize:
@@ -392,6 +401,7 @@ class AsyncQueue:
 
         This method is a coroutine.
         """
+        self._parent._check_closing()
         with (yield from self._parent._async_not_empty):
             self._parent._sync_mutex.acquire()
             locked = True
@@ -420,6 +430,7 @@ class AsyncQueue:
 
         Return an item if one is immediately available, else raise QueueEmpty.
         """
+        self._parent._check_closing()
         with self._parent._sync_mutex:
             if self._parent._qsize() == 0:
                 raise AsyncQueueEmpty
@@ -443,6 +454,7 @@ class AsyncQueue:
         Raises ValueError if called more times than there were items placed in
         the queue.
         """
+        self._parent._check_closing()
         with self._parent._all_tasks_done:
             if self._parent._unfinished_tasks <= 0:
                 raise ValueError('task_done() called too many times')
