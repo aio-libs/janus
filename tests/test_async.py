@@ -85,6 +85,9 @@ class QueueBasicTests(_QueueTestBase):
         self.assertEqual(1, q.get_nowait())
         self.assertTrue(q.empty())
 
+        _q.close()
+        self.loop.run_until_complete(_q.wait_closed())
+
     def test_full(self):
         _q = mixedqueue.Queue(loop=self.loop)
         q = _q.async_queue
@@ -95,6 +98,9 @@ class QueueBasicTests(_QueueTestBase):
         q.put_nowait(1)
         self.assertTrue(q.full())
 
+        _q.close()
+        self.loop.run_until_complete(_q.wait_closed())
+
     def test_order(self):
         _q = mixedqueue.Queue(loop=self.loop)
         q = _q.async_queue
@@ -103,6 +109,9 @@ class QueueBasicTests(_QueueTestBase):
 
         items = [q.get_nowait() for _ in range(3)]
         self.assertEqual([1, 3, 2], items)
+
+        _q.close()
+        self.loop.run_until_complete(_q.wait_closed())
 
     def test_maxsize(self):
         def gen():
@@ -147,6 +156,9 @@ class QueueBasicTests(_QueueTestBase):
         loop.run_until_complete(test())
         self.assertAlmostEqual(0.02, loop.time())
 
+        _q.close()
+        self.loop.run_until_complete(_q.wait_closed())
+
 
 class QueueGetTests(_QueueTestBase):
     def test_blocking_get(self):
@@ -183,6 +195,9 @@ class QueueGetTests(_QueueTestBase):
         self.loop.run_until_complete(t)
         self.assertEqual(1, q.qsize())
 
+        _q.close()
+        self.loop.run_until_complete(_q.wait_closed())
+
     def test_blocking_get_wait(self):
         def gen():
             when = yield
@@ -218,15 +233,24 @@ class QueueGetTests(_QueueTestBase):
         self.assertEqual(1, res)
         self.assertAlmostEqual(0.01, loop.time())
 
+        _q.close()
+        self.loop.run_until_complete(_q.wait_closed())
+
     def test_nonblocking_get(self):
         _q = mixedqueue.Queue(loop=self.loop)
         q = _q.async_queue
         q.put_nowait(1)
         self.assertEqual(1, q.get_nowait())
 
+        _q.close()
+        self.loop.run_until_complete(_q.wait_closed())
+
     def test_nonblocking_get_exception(self):
         _q = mixedqueue.Queue(loop=self.loop)
         self.assertRaises(asyncio.QueueEmpty, _q.async_queue.get_nowait)
+
+        _q.close()
+        self.loop.run_until_complete(_q.wait_closed())
 
     def test_get_cancelled(self):
         def gen():
@@ -255,6 +279,9 @@ class QueueGetTests(_QueueTestBase):
         self.assertEqual(1, loop.run_until_complete(test()))
         self.assertAlmostEqual(0.06, loop.time())
 
+        _q.close()
+        self.loop.run_until_complete(_q.wait_closed())
+
     def test_get_cancelled_race(self):
         _q = mixedqueue.Queue(loop=self.loop)
         q = _q.async_queue
@@ -270,6 +297,9 @@ class QueueGetTests(_QueueTestBase):
         test_utils.run_briefly(self.loop)
         self.assertEqual(t2.result(), 'a')
 
+        _q.close()
+        self.loop.run_until_complete(_q.wait_closed())
+
     def test_get_with_waiting_putters(self):
         _q = mixedqueue.Queue(loop=self.loop, maxsize=1)
         q = _q.async_queue
@@ -279,6 +309,9 @@ class QueueGetTests(_QueueTestBase):
         test_utils.run_briefly(self.loop)
         self.assertEqual(self.loop.run_until_complete(q.get()), 'a')
         self.assertEqual(self.loop.run_until_complete(q.get()), 'b')
+
+        _q.close()
+        self.loop.run_until_complete(_q.wait_closed())
 
 
 class QueuePutTests(_QueueTestBase):
@@ -292,6 +325,9 @@ class QueuePutTests(_QueueTestBase):
             yield from q.put(1)
 
         self.loop.run_until_complete(queue_put())
+
+        _q.close()
+        self.loop.run_until_complete(_q.wait_closed())
 
     def test_blocking_put_wait(self):
         def gen():
@@ -326,17 +362,26 @@ class QueuePutTests(_QueueTestBase):
         loop.run_until_complete(queue_get())
         self.assertAlmostEqual(0.01, loop.time())
 
+        _q.close()
+        self.loop.run_until_complete(_q.wait_closed())
+
     def test_nonblocking_put(self):
         _q = mixedqueue.Queue(loop=self.loop)
         q = _q.async_queue
         q.put_nowait(1)
         self.assertEqual(1, q.get_nowait())
 
+        _q.close()
+        self.loop.run_until_complete(_q.wait_closed())
+
     def test_nonblocking_put_exception(self):
         _q = mixedqueue.Queue(maxsize=1, loop=self.loop)
         q = _q.async_queue
         q.put_nowait(1)
         self.assertRaises(asyncio.QueueFull, q.put_nowait, 2)
+
+        _q.close()
+        self.loop.run_until_complete(_q.wait_closed())
 
     def test_float_maxsize(self):
         _q = mixedqueue.Queue(maxsize=1.3, loop=self.loop)
@@ -345,6 +390,9 @@ class QueuePutTests(_QueueTestBase):
         q.put_nowait(2)
         self.assertTrue(q.full())
         self.assertRaises(asyncio.QueueFull, q.put_nowait, 3)
+
+        _q.close()
+        self.loop.run_until_complete(_q.wait_closed())
 
         _q = mixedqueue.Queue(maxsize=1.3, loop=self.loop)
         q = _q.async_queue
@@ -356,6 +404,9 @@ class QueuePutTests(_QueueTestBase):
             self.assertTrue(q.full())
 
         self.loop.run_until_complete(queue_put())
+
+        _q.close()
+        self.loop.run_until_complete(_q.wait_closed())
 
     def test_put_cancelled(self):
         _q = mixedqueue.Queue(loop=self.loop)
@@ -374,6 +425,9 @@ class QueuePutTests(_QueueTestBase):
         self.assertEqual(1, self.loop.run_until_complete(test()))
         self.assertTrue(t.done())
         self.assertTrue(t.result())
+
+        _q.close()
+        self.loop.run_until_complete(_q.wait_closed())
 
     def test_put_cancelled_race(self):
         _q = mixedqueue.Queue(loop=self.loop, maxsize=1)
@@ -395,6 +449,9 @@ class QueuePutTests(_QueueTestBase):
 
         self.loop.run_until_complete(put_b)
 
+        _q.close()
+        self.loop.run_until_complete(_q.wait_closed())
+
     def test_put_with_waiting_getters(self):
         fut = asyncio.Future(loop=self.loop)
 
@@ -415,6 +472,9 @@ class QueuePutTests(_QueueTestBase):
         self.loop.run_until_complete(put())
         self.assertEqual(self.loop.run_until_complete(t), 'a')
 
+        _q.close()
+        self.loop.run_until_complete(_q.wait_closed())
+
 
 class LifoQueueTests(_QueueTestBase):
     def test_order(self):
@@ -425,6 +485,9 @@ class LifoQueueTests(_QueueTestBase):
 
         items = [q.get_nowait() for _ in range(3)]
         self.assertEqual([2, 3, 1], items)
+
+        _q.close()
+        self.loop.run_until_complete(_q.wait_closed())
 
 
 class PriorityQueueTests(_QueueTestBase):
@@ -437,6 +500,9 @@ class PriorityQueueTests(_QueueTestBase):
         items = [q.get_nowait() for _ in range(3)]
         self.assertEqual([1, 2, 3], items)
 
+        _q.close()
+        self.loop.run_until_complete(_q.wait_closed())
+
 
 class _QueueJoinTestMixin:
 
@@ -446,6 +512,9 @@ class _QueueJoinTestMixin:
         _q = self.q_class(loop=self.loop)
         q = _q.async_queue
         self.assertRaises(ValueError, q.task_done)
+
+        _q.close()
+        self.loop.run_until_complete(_q.wait_closed())
 
     def test_task_done(self):
         _q = self.q_class(loop=self.loop)
@@ -485,6 +554,9 @@ class _QueueJoinTestMixin:
             q.put_nowait(0)
         self.loop.run_until_complete(asyncio.wait(tasks, loop=self.loop))
 
+        _q.close()
+        self.loop.run_until_complete(_q.wait_closed())
+
     def test_join_empty_queue(self):
         _q = self.q_class(loop=self.loop)
         q = _q.async_queue
@@ -499,6 +571,9 @@ class _QueueJoinTestMixin:
 
         self.loop.run_until_complete(join())
 
+        _q.close()
+        self.loop.run_until_complete(_q.wait_closed())
+
     @unittest.expectedFailure
     def test_format(self):
         _q = self.q_class(loop=self.loop)
@@ -507,6 +582,9 @@ class _QueueJoinTestMixin:
 
         q._unfinished_tasks = 2
         self.assertEqual(q._format(), 'maxsize=0 tasks=2')
+
+        _q.close()
+        self.loop.run_until_complete(_q.wait_closed())
 
 
 class QueueJoinTests(_QueueJoinTestMixin, _QueueTestBase):

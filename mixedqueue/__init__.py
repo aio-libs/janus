@@ -1,15 +1,17 @@
 import asyncio
-
-from heapq import heappush, heappop
+import logging
 import threading
-
+from asyncio import QueueEmpty as AsyncQueueEmpty
+from asyncio import QueueFull as AsyncQueueFull
 from collections import deque
-from queue import Empty as SyncQueueEmpty, Full as SyncQueueFull
-from asyncio import (QueueEmpty as AsyncQueueEmpty, QueueFull as
-                     AsyncQueueFull)
+from heapq import heappop, heappush
+from queue import Empty as SyncQueueEmpty
+from queue import Full as SyncQueueFull
 from time import monotonic
 
 __version__ = '0.0.1'
+
+log = logging.getLogger(__package__)
 
 
 class Queue:
@@ -37,6 +39,15 @@ class Queue:
 
         self._sync_queue = SyncQueue(self)
         self._async_queue = AsyncQueue(self)
+
+        self._pending = set()
+
+    def close(self):
+        pass
+
+    @asyncio.coroutine
+    def wait_closed(self):
+        yield from asyncio.wait(self._pending, loop=self._loop)
 
     @property
     def maxsize(self):
@@ -77,13 +88,17 @@ class Queue:
         def f():
             with self._sync_not_empty:
                 self._sync_not_empty.notify()
+
         self._loop.run_in_executor(None, f)
 
     def _notify_sync_not_full(self):
         def f():
             with self._sync_not_full:
                 self._sync_not_full.notify()
-        self._loop.run_in_executor(None, f)
+
+        fut = self._loop.run_in_executor(None, f)
+        fut.add_done_callback(self._pending.discard)
+        self._pending.add(fut)
 
     def _notify_async_not_empty(self, *, threadsafe):
         @asyncio.coroutine
@@ -91,11 +106,15 @@ class Queue:
             with (yield from self._async_not_empty):
                 self._async_not_empty.notify()
 
-        task = asyncio.async(f(), loop=self._loop)
+        def task_maker():
+            task = asyncio.async(f(), loop=self._loop)
+            task.add_done_callback(self._pending.discard)
+            self._pending.add(task)
+
         if threadsafe:
-            self._loop.call_soon_threadsafe(task)
+            self._loop.call_soon_threadsafe(task_maker)
         else:
-            self._loop.call_soon(task)
+            self._loop.call_soon(task_maker)
 
     def _notify_async_not_full(self, *, threadsafe):
         @asyncio.coroutine
@@ -103,11 +122,15 @@ class Queue:
             with (yield from self._async_not_full):
                 self._async_not_full.notify()
 
-        task = asyncio.async(f(), loop=self._loop)
+        def task_maker():
+            task = asyncio.async(f(), loop=self._loop)
+            task.add_done_callback(self._pending.discard)
+            self._pending.add(task)
+
         if threadsafe:
-            self._loop.call_soon_threadsafe(task)
+            self._loop.call_soon_threadsafe(task_maker)
         else:
-            self._loop.call_soon(task)
+            self._loop.call_soon(task_maker)
 
 
 class SyncQueue:
@@ -316,8 +339,9 @@ class AsyncQueue:
                 if self._parent._maxsize > 0:
                     do_wait = True
                     while do_wait:
-                        do_wait = (self._parent._qsize() >=
-                                   self._parent._maxsize)
+                        do_wait = (
+                            self._parent._qsize() >= self._parent._maxsize
+                        )
                         if do_wait:
                             locked = False
                             self._parent._sync_mutex.release()
