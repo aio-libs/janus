@@ -394,8 +394,8 @@ class AsyncQueue:
                         locked = False
 
                 item = self._parent._get()
-                self._parent._async_not_empty.notify()
-                self._parent._notify_sync_not_empty()
+                self._parent._async_not_full.notify()
+                self._parent._notify_sync_not_full()
                 return item
             finally:
                 if locked:
