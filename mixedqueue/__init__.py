@@ -37,16 +37,29 @@ class Queue:
         self._finished = asyncio.Event(loop=self._loop)
         self._finished.set()
 
+        self._closing = False
+        self._pending = set()
+
         self._sync_queue = SyncQueue(self)
         self._async_queue = AsyncQueue(self)
 
-        self._pending = set()
 
     def close(self):
-        pass
+        with self._sync_mutex:
+            # TODO: forbid queue modification if closing is set
+            self._closing = True
+            for fut in self._pending:
+                fut.cancel()
 
     @asyncio.coroutine
     def wait_closed(self):
+        # should be called from loop after close().
+        # Nobody should put/get at this point,
+        # so lock acquiring is not required
+        if not self._closing:
+            raise RuntimeError("Waiting for non-closed queue")
+        if not self._pending:
+            return
         yield from asyncio.wait(self._pending, loop=self._loop)
 
     @property
@@ -86,14 +99,14 @@ class Queue:
 
     def _notify_sync_not_empty(self):
         def f():
-            with self._sync_not_empty:
+            with self._sync_mutex:
                 self._sync_not_empty.notify()
 
         self._loop.run_in_executor(None, f)
 
     def _notify_sync_not_full(self):
         def f():
-            with self._sync_not_full:
+            with self._sync_mutex:
                 self._sync_not_full.notify()
 
         fut = self._loop.run_in_executor(None, f)
@@ -103,7 +116,7 @@ class Queue:
     def _notify_async_not_empty(self, *, threadsafe):
         @asyncio.coroutine
         def f():
-            with (yield from self._async_not_empty):
+            with (yield from self._async_mutex):
                 self._async_not_empty.notify()
 
         def task_maker():
@@ -119,7 +132,7 @@ class Queue:
     def _notify_async_not_full(self, *, threadsafe):
         @asyncio.coroutine
         def f():
-            with (yield from self._async_not_full):
+            with (yield from self._async_mutex):
                 self._async_not_full.notify()
 
         def task_maker():
@@ -391,7 +404,7 @@ class AsyncQueue:
                         self._parent._sync_mutex.release()
                         yield from self._parent._async_not_empty.wait()
                         self._parent._sync_mutex.acquire()
-                        locked = False
+                        locked = True
 
                 item = self._parent._get()
                 self._parent._async_not_full.notify()

@@ -87,6 +87,7 @@ class QueueBasicTests(_QueueTestBase):
         self.assertEqual(1, q.get_nowait())
         self.assertTrue(q.empty())
 
+        self.assertFalse(_q._sync_mutex.locked())
         _q.close()
         self.loop.run_until_complete(_q.wait_closed())
 
@@ -100,6 +101,7 @@ class QueueBasicTests(_QueueTestBase):
         q.put_nowait(1)
         self.assertTrue(q.full())
 
+        self.assertFalse(_q._sync_mutex.locked())
         _q.close()
         self.loop.run_until_complete(_q.wait_closed())
 
@@ -112,6 +114,7 @@ class QueueBasicTests(_QueueTestBase):
         items = [q.get_nowait() for _ in range(3)]
         self.assertEqual([1, 3, 2], items)
 
+        self.assertFalse(_q._sync_mutex.locked())
         _q.close()
         self.loop.run_until_complete(_q.wait_closed())
 
@@ -149,6 +152,7 @@ class QueueBasicTests(_QueueTestBase):
 
         self.loop.run_until_complete(test())
 
+        self.assertFalse(_q._sync_mutex.locked())
         _q.close()
         self.loop.run_until_complete(_q.wait_closed())
 
@@ -165,6 +169,10 @@ class QueueGetTests(_QueueTestBase):
 
         res = self.loop.run_until_complete(queue_get())
         self.assertEqual(1, res)
+
+        self.assertFalse(_q._sync_mutex.locked())
+        _q.close()
+        self.loop.run_until_complete(_q.wait_closed())
 
     def test_get_with_putters(self):
         _q = mixedqueue.Queue(1, loop=self.loop)
@@ -188,6 +196,7 @@ class QueueGetTests(_QueueTestBase):
         self.loop.run_until_complete(t)
         self.assertEqual(1, q.qsize())
 
+        self.assertFalse(_q._sync_mutex.locked())
         _q.close()
         self.loop.run_until_complete(_q.wait_closed())
 
@@ -218,6 +227,7 @@ class QueueGetTests(_QueueTestBase):
         res = self.loop.run_until_complete(queue_put())
         self.assertEqual(1, res)
 
+        self.assertFalse(_q._sync_mutex.locked())
         _q.close()
         self.loop.run_until_complete(_q.wait_closed())
 
@@ -234,6 +244,7 @@ class QueueGetTests(_QueueTestBase):
         _q = mixedqueue.Queue(loop=self.loop)
         self.assertRaises(asyncio.QueueEmpty, _q.async_queue.get_nowait)
 
+        self.assertFalse(_q._sync_mutex.locked())
         _q.close()
         self.loop.run_until_complete(_q.wait_closed())
 
@@ -256,6 +267,7 @@ class QueueGetTests(_QueueTestBase):
 
         self.assertEqual(1, self.loop.run_until_complete(test()))
 
+        self.assertFalse(_q._sync_mutex.locked())
         _q.close()
         self.loop.run_until_complete(_q.wait_closed())
 
@@ -285,6 +297,7 @@ class QueueGetTests(_QueueTestBase):
         self.loop.run_until_complete(t2)
         self.assertEqual(t2.result(), 'a')
 
+        self.assertFalse(_q._sync_mutex.locked())
         _q.close()
         self.loop.run_until_complete(_q.wait_closed())
 
@@ -296,11 +309,11 @@ class QueueGetTests(_QueueTestBase):
         asyncio.Task(q.put('b'), loop=self.loop)
 
         self.loop.run_until_complete(asyncio.sleep(0.01, loop=self.loop))
-        print('aaaaaaaaaaaaaaaaaaaaaaaaaa')
 
         self.assertEqual(self.loop.run_until_complete(q.get()), 'a')
         self.assertEqual(self.loop.run_until_complete(q.get()), 'b')
 
+        self.assertFalse(_q._sync_mutex.locked())
         _q.close()
         self.loop.run_until_complete(_q.wait_closed())
 
@@ -317,6 +330,7 @@ class QueuePutTests(_QueueTestBase):
 
         self.loop.run_until_complete(queue_put())
 
+        self.assertFalse(_q._sync_mutex.locked())
         _q.close()
         self.loop.run_until_complete(_q.wait_closed())
 
@@ -353,6 +367,7 @@ class QueuePutTests(_QueueTestBase):
         loop.run_until_complete(queue_get())
         self.assertAlmostEqual(0.01, loop.time())
 
+        self.assertFalse(_q._sync_mutex.locked())
         _q.close()
         self.loop.run_until_complete(_q.wait_closed())
 
@@ -362,6 +377,7 @@ class QueuePutTests(_QueueTestBase):
         q.put_nowait(1)
         self.assertEqual(1, q.get_nowait())
 
+        self.assertFalse(_q._sync_mutex.locked())
         _q.close()
         self.loop.run_until_complete(_q.wait_closed())
 
@@ -371,6 +387,7 @@ class QueuePutTests(_QueueTestBase):
         q.put_nowait(1)
         self.assertRaises(asyncio.QueueFull, q.put_nowait, 2)
 
+        self.assertFalse(_q._sync_mutex.locked())
         _q.close()
         self.loop.run_until_complete(_q.wait_closed())
 
@@ -396,6 +413,7 @@ class QueuePutTests(_QueueTestBase):
 
         self.loop.run_until_complete(queue_put())
 
+        self.assertFalse(_q._sync_mutex.locked())
         _q.close()
         self.loop.run_until_complete(_q.wait_closed())
 
@@ -417,6 +435,7 @@ class QueuePutTests(_QueueTestBase):
         self.assertTrue(t.done())
         self.assertTrue(t.result())
 
+        self.assertFalse(_q._sync_mutex.locked())
         _q.close()
         self.loop.run_until_complete(_q.wait_closed())
 
@@ -441,6 +460,7 @@ class QueuePutTests(_QueueTestBase):
 
         self.loop.run_until_complete(put_b)
 
+        self.assertFalse(_q._sync_mutex.locked())
         _q.close()
         self.loop.run_until_complete(_q.wait_closed())
 
@@ -464,6 +484,7 @@ class QueuePutTests(_QueueTestBase):
         self.loop.run_until_complete(put())
         self.assertEqual(self.loop.run_until_complete(t), 'a')
 
+        self.assertFalse(_q._sync_mutex.locked())
         _q.close()
         self.loop.run_until_complete(_q.wait_closed())
 
@@ -478,6 +499,7 @@ class LifoQueueTests(_QueueTestBase):
         items = [q.get_nowait() for _ in range(3)]
         self.assertEqual([2, 3, 1], items)
 
+        self.assertFalse(_q._sync_mutex.locked())
         _q.close()
         self.loop.run_until_complete(_q.wait_closed())
 
@@ -492,6 +514,7 @@ class PriorityQueueTests(_QueueTestBase):
         items = [q.get_nowait() for _ in range(3)]
         self.assertEqual([1, 2, 3], items)
 
+        self.assertFalse(_q._sync_mutex.locked())
         _q.close()
         self.loop.run_until_complete(_q.wait_closed())
 
@@ -505,6 +528,7 @@ class _QueueJoinTestMixin:
         q = _q.async_queue
         self.assertRaises(ValueError, q.task_done)
 
+        self.assertFalse(_q._sync_mutex.locked())
         _q.close()
         self.loop.run_until_complete(_q.wait_closed())
 
@@ -546,6 +570,7 @@ class _QueueJoinTestMixin:
             q.put_nowait(0)
         self.loop.run_until_complete(asyncio.wait(tasks, loop=self.loop))
 
+        self.assertFalse(_q._sync_mutex.locked())
         _q.close()
         self.loop.run_until_complete(_q.wait_closed())
 
@@ -563,6 +588,7 @@ class _QueueJoinTestMixin:
 
         self.loop.run_until_complete(join())
 
+        self.assertFalse(_q._sync_mutex.locked())
         _q.close()
         self.loop.run_until_complete(_q.wait_closed())
 
@@ -575,6 +601,7 @@ class _QueueJoinTestMixin:
         q._unfinished_tasks = 2
         self.assertEqual(q._format(), 'maxsize=0 tasks=2')
 
+        self.assertFalse(_q._sync_mutex.locked())
         _q.close()
         self.loop.run_until_complete(_q.wait_closed())
 
