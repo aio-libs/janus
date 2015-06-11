@@ -57,7 +57,7 @@ setup(
     ],
     author='Andrew Svetlov',
     author_email='andrew.svetlov@gmail.com',
-    url='https://github.com/aio-libs/aiohttp_security/',
+    url='https://github.com/aio-libs/janus/',
     license='Apache 2',
     packages=find_packages(),
     install_requires=install_requires,
