@@ -49,5 +49,10 @@ License
 
 ``janus`` library is offered under Apache 2 license.
 
+Thanks
+======
+
+The library development is sponsored by DataRobot (http://datarobot.com/)
+
 .. _Janus: https://en.wikipedia.org/wiki/Janus
 .. _asyncio: https://docs.python.org/3/library/asyncio.html
