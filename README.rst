@@ -1,4 +1,51 @@
-mixedqueue
-==========
+janus
+=====
 
-Mixed sync-async queue
+Mixed sync-async queue, supposed to use for communicating between
+classic synchronous (threaded) code and asynchronous (in terms of
+asyncio_) one.
+
+Like Janus_ god queue object from the library has two faces:
+synchronous and asynchronous interfaces.
+
+Synchronous is fully compatible with `standard queue
+<https://docs.python.org/3/library/queue.html>`_, asynchronous one
+follows `asyncio queue design
+<https://docs.python.org/3/library/asyncio-queue.html>`_.
+
+Usage example
+-------------
+
+::
+
+    import asyncio
+    import janus
+
+    loop = asyncio.get_event_loop()
+    queue = janus.Queue(loop=loop)
+
+    def threaded(sync_q):
+        for i in range(100):
+            sync_q.put(i)
+        sync_q.join()
+
+    @asyncio.coroutine
+    def async_coro(async_q):
+        fut = loop.run_in_executor(None, threaded)
+
+        for i in range(100):
+            val = yield from async_q.get()
+            assert val == i
+            async_q.task_done()
+
+        yield from fut
+
+    loop.run_until_complete(async_coro())
+
+License
+-------
+
+``janus`` library is offered under Apache 2 license.
+
+.. _Janus: https://en.wikipedia.org/wiki/Janus
+.. _asyncio: https://docs.python.org/3/library/asyncio.html
