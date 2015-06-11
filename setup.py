@@ -20,13 +20,14 @@ class PyTest(TestCommand):
         self.test_suite = True
 
     def run_tests(self):
-        #import here, cause outside the eggs aren't loaded
+        # import here, cause outside the eggs aren't loaded
         import pytest
         errno = pytest.main(self.pytest_args)
         sys.exit(errno)
 
+
 with codecs.open(os.path.join(os.path.abspath(os.path.dirname(
-    __file__)), 'janus', '__init__.py'), 'r', 'latin1') as fp:
+        __file__)), 'janus', '__init__.py'), 'r', 'latin1') as fp:
     try:
         version = re.findall(r"^__version__ = '([^']+)'$", fp.read(), re.M)[0]
     except IndexError:
@@ -40,6 +41,7 @@ def read(f):
 install_requires = []
 tests_require = install_requires + ['py.tests']
 extras_require = {}
+
 
 setup(
     name='janus',
