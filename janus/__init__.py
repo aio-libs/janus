@@ -40,8 +40,8 @@ class Queue:
         self._closing = False
         self._pending = set()
 
-        self._sync_queue = SyncQueue(self)
-        self._async_queue = AsyncQueue(self)
+        self._sync_queue = _SyncQueueProxy(self)
+        self._async_queue = _AsyncQueueProxy(self)
 
     def close(self):
         with self._sync_mutex:
@@ -66,11 +66,11 @@ class Queue:
         return self._maxsize
 
     @property
-    def sync_queue(self):
+    def sync_q(self):
         return self._sync_queue
 
     @property
-    def async_queue(self):
+    def async_q(self):
         return self._async_queue
 
     # Override these methods to implement other queue organizations
@@ -149,7 +149,7 @@ class Queue:
             raise RuntimeError('Modification of closed queue is forbidden')
 
 
-class SyncQueue:
+class _SyncQueueProxy:
     '''Create a queue object with a given maximum size.
 
     If maxsize is <= 0, the queue size is infinite.
@@ -311,7 +311,7 @@ class SyncQueue:
         return self.get(block=False)
 
 
-class AsyncQueue:
+class _AsyncQueueProxy:
     '''Create a queue object with a given maximum size.
 
     If maxsize is <= 0, the queue size is infinite.

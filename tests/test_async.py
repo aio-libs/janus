@@ -24,7 +24,7 @@ class QueueBasicTests(_QueueTestBase):
         """
 
         _q = janus.Queue(loop=self.loop)
-        q = _q.async_queue
+        q = _q.async_q
         self.assertTrue(fn(q).startswith('<Queue'), fn(q))
         id_is_present = hex(id(q)) in fn(q)
         self.assertEqual(expect_id, id_is_present)
@@ -32,7 +32,7 @@ class QueueBasicTests(_QueueTestBase):
         @asyncio.coroutine
         def add_getter():
             _q = janus.Queue(loop=self.loop)
-            q = _q.async_queue
+            q = _q.async_q
             # Start a task that waits to get.
             asyncio.Task(q.get(), loop=self.loop)
             # Let it start waiting.
@@ -46,7 +46,7 @@ class QueueBasicTests(_QueueTestBase):
         @asyncio.coroutine
         def add_putter():
             _q = janus.Queue(maxsize=1, loop=self.loop)
-            q = _q.async_queue
+            q = _q.async_q
             q.put_nowait(1)
             # Start a task that waits to put.
             asyncio.Task(q.put(2), loop=self.loop)
@@ -59,7 +59,7 @@ class QueueBasicTests(_QueueTestBase):
         self.loop.run_until_complete(add_putter())
 
         _q = janus.Queue(loop=self.loop)
-        q = _q.async_queue
+        q = _q.async_q
         q.put_nowait(1)
         self.assertTrue('_queue=[1]' in fn(q))
 
@@ -71,7 +71,7 @@ class QueueBasicTests(_QueueTestBase):
 
     def test_empty(self):
         _q = janus.Queue(loop=self.loop)
-        q = _q.async_queue
+        q = _q.async_q
         self.assertTrue(q.empty())
         q.put_nowait(1)
         self.assertFalse(q.empty())
@@ -84,11 +84,11 @@ class QueueBasicTests(_QueueTestBase):
 
     def test_full(self):
         _q = janus.Queue(loop=self.loop)
-        q = _q.async_queue
+        q = _q.async_q
         self.assertFalse(q.full())
 
         _q = janus.Queue(maxsize=1, loop=self.loop)
-        q = _q.async_queue
+        q = _q.async_q
         q.put_nowait(1)
         self.assertTrue(q.full())
 
@@ -98,7 +98,7 @@ class QueueBasicTests(_QueueTestBase):
 
     def test_order(self):
         _q = janus.Queue(loop=self.loop)
-        q = _q.async_queue
+        q = _q.async_q
         for i in [1, 3, 2]:
             q.put_nowait(i)
 
@@ -111,7 +111,7 @@ class QueueBasicTests(_QueueTestBase):
 
     def test_maxsize(self):
         _q = janus.Queue(maxsize=2, loop=self.loop)
-        q = _q.async_queue
+        q = _q.async_q
         self.assertEqual(2, q.maxsize)
         have_been_put = []
 
@@ -151,7 +151,7 @@ class QueueBasicTests(_QueueTestBase):
 class QueueGetTests(_QueueTestBase):
     def test_blocking_get(self):
         _q = janus.Queue(loop=self.loop)
-        q = _q.async_queue
+        q = _q.async_q
         q.put_nowait(1)
 
         @asyncio.coroutine
@@ -167,7 +167,7 @@ class QueueGetTests(_QueueTestBase):
 
     def test_get_with_putters(self):
         _q = janus.Queue(1, loop=self.loop)
-        q = _q.async_queue
+        q = _q.async_q
         q.put_nowait(1)
 
         fut = asyncio.Future(loop=self.loop)
@@ -193,7 +193,7 @@ class QueueGetTests(_QueueTestBase):
 
     def test_blocking_get_wait(self):
         _q = janus.Queue(loop=self.loop)
-        q = _q.async_queue
+        q = _q.async_q
         started = asyncio.Event(loop=self.loop)
         finished = False
 
@@ -224,7 +224,7 @@ class QueueGetTests(_QueueTestBase):
 
     def test_nonblocking_get(self):
         _q = janus.Queue(loop=self.loop)
-        q = _q.async_queue
+        q = _q.async_q
         q.put_nowait(1)
         self.assertEqual(1, q.get_nowait())
 
@@ -233,7 +233,7 @@ class QueueGetTests(_QueueTestBase):
 
     def test_nonblocking_get_exception(self):
         _q = janus.Queue(loop=self.loop)
-        self.assertRaises(asyncio.QueueEmpty, _q.async_queue.get_nowait)
+        self.assertRaises(asyncio.QueueEmpty, _q.async_q.get_nowait)
 
         self.assertFalse(_q._sync_mutex.locked())
         _q.close()
@@ -241,7 +241,7 @@ class QueueGetTests(_QueueTestBase):
 
     def test_get_cancelled(self):
         _q = janus.Queue(loop=self.loop)
-        q = _q.async_queue
+        q = _q.async_q
 
         @asyncio.coroutine
         def queue_get():
@@ -264,7 +264,7 @@ class QueueGetTests(_QueueTestBase):
 
     def test_get_cancelled_race(self):
         _q = janus.Queue(loop=self.loop)
-        q = _q.async_queue
+        q = _q.async_q
 
         f1 = asyncio.Future(loop=self.loop)
 
@@ -294,7 +294,7 @@ class QueueGetTests(_QueueTestBase):
 
     def test_get_with_waiting_putters(self):
         _q = janus.Queue(loop=self.loop, maxsize=1)
-        q = _q.async_queue
+        q = _q.async_q
 
         asyncio.Task(q.put('a'), loop=self.loop)
         asyncio.Task(q.put('b'), loop=self.loop)
@@ -312,7 +312,7 @@ class QueueGetTests(_QueueTestBase):
 class QueuePutTests(_QueueTestBase):
     def test_blocking_put(self):
         _q = janus.Queue(loop=self.loop)
-        q = _q.async_queue
+        q = _q.async_q
 
         @asyncio.coroutine
         def queue_put():
@@ -327,7 +327,7 @@ class QueuePutTests(_QueueTestBase):
 
     def test_blocking_put_wait(self):
         _q = janus.Queue(maxsize=1, loop=self.loop)
-        q = _q.async_queue
+        q = _q.async_q
         started = asyncio.Event(loop=self.loop)
         finished = False
 
@@ -356,7 +356,7 @@ class QueuePutTests(_QueueTestBase):
 
     def test_nonblocking_put(self):
         _q = janus.Queue(loop=self.loop)
-        q = _q.async_queue
+        q = _q.async_q
         q.put_nowait(1)
         self.assertEqual(1, q.get_nowait())
 
@@ -366,7 +366,7 @@ class QueuePutTests(_QueueTestBase):
 
     def test_nonblocking_put_exception(self):
         _q = janus.Queue(maxsize=1, loop=self.loop)
-        q = _q.async_queue
+        q = _q.async_q
         q.put_nowait(1)
         self.assertRaises(asyncio.QueueFull, q.put_nowait, 2)
 
@@ -376,7 +376,7 @@ class QueuePutTests(_QueueTestBase):
 
     def test_float_maxsize(self):
         _q = janus.Queue(maxsize=1.3, loop=self.loop)
-        q = _q.async_queue
+        q = _q.async_q
         q.put_nowait(1)
         q.put_nowait(2)
         self.assertTrue(q.full())
@@ -386,7 +386,7 @@ class QueuePutTests(_QueueTestBase):
         self.loop.run_until_complete(_q.wait_closed())
 
         _q = janus.Queue(maxsize=1.3, loop=self.loop)
-        q = _q.async_queue
+        q = _q.async_q
 
         @asyncio.coroutine
         def queue_put():
@@ -402,7 +402,7 @@ class QueuePutTests(_QueueTestBase):
 
     def test_put_cancelled(self):
         _q = janus.Queue(loop=self.loop)
-        q = _q.async_queue
+        q = _q.async_q
 
         @asyncio.coroutine
         def queue_put():
@@ -424,7 +424,7 @@ class QueuePutTests(_QueueTestBase):
 
     def test_put_cancelled_race(self):
         _q = janus.Queue(loop=self.loop, maxsize=1)
-        q = _q.async_queue
+        q = _q.async_q
 
         put_a = asyncio.Task(q.put('a'), loop=self.loop)
         put_b = asyncio.Task(q.put('b'), loop=self.loop)
@@ -466,7 +466,7 @@ class QueuePutTests(_QueueTestBase):
             yield from q.put('a')
 
         _q = janus.Queue(loop=self.loop)
-        q = _q.async_queue
+        q = _q.async_q
         t = asyncio.Task(go(), loop=self.loop)
         self.loop.run_until_complete(fut)
         self.loop.run_until_complete(put())
@@ -480,7 +480,7 @@ class QueuePutTests(_QueueTestBase):
 class LifoQueueTests(_QueueTestBase):
     def test_order(self):
         _q = janus.LifoQueue(loop=self.loop)
-        q = _q.async_queue
+        q = _q.async_q
         for i in [1, 3, 2]:
             q.put_nowait(i)
 
@@ -495,7 +495,7 @@ class LifoQueueTests(_QueueTestBase):
 class PriorityQueueTests(_QueueTestBase):
     def test_order(self):
         _q = janus.PriorityQueue(loop=self.loop)
-        q = _q.async_queue
+        q = _q.async_q
         for i in [1, 3, 2]:
             q.put_nowait(i)
 
@@ -513,7 +513,7 @@ class _QueueJoinTestMixin:
 
     def test_task_done_underflow(self):
         _q = self.q_class(loop=self.loop)
-        q = _q.async_queue
+        q = _q.async_q
         self.assertRaises(ValueError, q.task_done)
 
         self.assertFalse(_q._sync_mutex.locked())
@@ -522,7 +522,7 @@ class _QueueJoinTestMixin:
 
     def test_task_done(self):
         _q = self.q_class(loop=self.loop)
-        q = _q.async_queue
+        q = _q.async_q
         for i in range(100):
             q.put_nowait(i)
 
@@ -564,7 +564,7 @@ class _QueueJoinTestMixin:
 
     def test_join_empty_queue(self):
         _q = self.q_class(loop=self.loop)
-        q = _q.async_queue
+        q = _q.async_q
 
         # Test that a queue join()s successfully, and before anything else
         # (done twice for insurance).
@@ -583,7 +583,7 @@ class _QueueJoinTestMixin:
     @unittest.expectedFailure
     def test_format(self):
         _q = self.q_class(loop=self.loop)
-        q = _q.async_queue
+        q = _q.async_q
         self.assertEqual(q._format(), 'maxsize=0')
 
         q._unfinished_tasks = 2

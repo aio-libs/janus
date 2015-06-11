@@ -103,7 +103,7 @@ class BaseQueueTestMixin(BlockingTestMixin):
         super().setUp()
 
     def simple_queue_test(self, _q):
-        q = _q.sync_queue
+        q = _q.sync_q
         if q.qsize():
             raise RuntimeError("Call this function with an empty queue")
         self.assertTrue(q.empty())
@@ -184,7 +184,7 @@ class BaseQueueTestMixin(BlockingTestMixin):
 
     def test_queue_task_done(self):
         # Test to make sure a queue task completed successfully.
-        q = self.type2test(loop=self.loop).sync_queue
+        q = self.type2test(loop=self.loop).sync_q
         try:
             q.task_done()
         except ValueError:
@@ -195,7 +195,7 @@ class BaseQueueTestMixin(BlockingTestMixin):
     def test_queue_join(self):
         # Test that a queue join()s successfully, and before anything else
         # (done twice for insurance).
-        q = self.type2test(loop=self.loop).sync_queue
+        q = self.type2test(loop=self.loop).sync_q
         self.queue_join_test(q)
         self.queue_join_test(q)
         try:
@@ -213,14 +213,14 @@ class BaseQueueTestMixin(BlockingTestMixin):
         self.simple_queue_test(q)
 
     def test_negative_timeout_raises_exception(self):
-        q = self.type2test(QUEUE_SIZE, loop=self.loop).sync_queue
+        q = self.type2test(QUEUE_SIZE, loop=self.loop).sync_q
         with self.assertRaises(ValueError):
             q.put(1, timeout=-1)
         with self.assertRaises(ValueError):
             q.get(1, timeout=-1)
 
     def test_nowait(self):
-        q = self.type2test(QUEUE_SIZE, loop=self.loop).sync_queue
+        q = self.type2test(QUEUE_SIZE, loop=self.loop).sync_q
         for i in range(QUEUE_SIZE):
             q.put_nowait(1)
         with self.assertRaises(queue.Full):
@@ -233,7 +233,7 @@ class BaseQueueTestMixin(BlockingTestMixin):
 
     def test_shrinking_queue(self):
         # issue 10110
-        q = self.type2test(3, loop=self.loop).sync_queue
+        q = self.type2test(3, loop=self.loop).sync_q
         q.put(1)
         q.put(2)
         q.put(3)
@@ -246,7 +246,7 @@ class BaseQueueTestMixin(BlockingTestMixin):
 
     def test_maxsize(self):
         # Test to make sure a queue task completed successfully.
-        q = self.type2test(maxsize=5, loop=self.loop).sync_queue
+        q = self.type2test(maxsize=5, loop=self.loop).sync_q
         self.assertEqual(q.maxsize, 5)
 
 
@@ -288,7 +288,7 @@ class FailingQueue(janus.Queue):
 
 class FailingQueueTest(BlockingTestMixin, unittest.TestCase):
     def failing_queue_test(self, _q):
-        q = _q.sync_queue
+        q = _q.sync_q
         if q.qsize():
             raise RuntimeError("Call this function with an empty queue")
         for i in range(QUEUE_SIZE - 1):
