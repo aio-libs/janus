@@ -39,6 +39,19 @@ class Queue:
 
         self._closing = False
         self._pending = set()
+        if hasattr(loop, 'is_closed'):
+            def checked_call_soon_threadsafe(callback, *args):
+                if not loop.is_closed():
+                    loop.call_soon_threadsafe(callback, *args)
+            self._call_soon_threadsafe = checked_call_soon_threadsafe
+
+            def checked_call_soon(callback, *args):
+                if not loop.is_closed():
+                    loop.call_soon(callback, *args)
+            self._call_soon = checked_call_soon
+        else:
+            self._call_soon_threadsafe = loop.call_soon_threadsafe
+            self._call_soon = loop.call_soon
 
         self._sync_queue = _SyncQueueProxy(self)
         self._async_queue = _AsyncQueueProxy(self)
@@ -124,9 +137,9 @@ class Queue:
             self._pending.add(task)
 
         if threadsafe:
-            self._loop.call_soon_threadsafe(task_maker)
+            self._call_soon_threadsafe(task_maker)
         else:
-            self._loop.call_soon(task_maker)
+            self._call_soon(task_maker)
 
     def _notify_async_not_full(self, *, threadsafe):
         @asyncio.coroutine
@@ -140,9 +153,9 @@ class Queue:
             self._pending.add(task)
 
         if threadsafe:
-            self._loop.call_soon_threadsafe(task_maker)
+            self._call_soon_threadsafe(task_maker)
         else:
-            self._loop.call_soon(task_maker)
+            self._call_soon(task_maker)
 
     def _check_closing(self):
         if self._closing:
