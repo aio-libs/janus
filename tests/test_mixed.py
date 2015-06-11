@@ -3,7 +3,7 @@ import unittest
 
 from unittest import mock
 
-import mixedqueue
+import janus
 
 
 class TestMixedMode(unittest.TestCase):
@@ -16,31 +16,31 @@ class TestMixedMode(unittest.TestCase):
 
     def test_ctor_loop(self):
         loop = mock.Mock()
-        q = mixedqueue.Queue(loop=loop)
+        q = janus.Queue(loop=loop)
         self.assertIs(q._loop, loop)
 
-        q = mixedqueue.Queue(loop=self.loop)
+        q = janus.Queue(loop=self.loop)
         self.assertIs(q._loop, self.loop)
 
     def test_ctor_noloop(self):
         asyncio.set_event_loop(self.loop)
-        q = mixedqueue.Queue()
+        q = janus.Queue()
         self.assertIs(q._loop, self.loop)
 
     def test_maxsize(self):
-        q = mixedqueue.Queue(5, loop=self.loop)
+        q = janus.Queue(5, loop=self.loop)
         self.assertIs(5, q.maxsize)
 
     def test_maxsize_named_param(self):
-        q = mixedqueue.Queue(maxsize=7, loop=self.loop)
+        q = janus.Queue(maxsize=7, loop=self.loop)
         self.assertIs(7, q.maxsize)
 
     def test_maxsize_default(self):
-        q = mixedqueue.Queue(loop=self.loop)
+        q = janus.Queue(loop=self.loop)
         self.assertIs(0, q.maxsize)
 
     def test_sync_put_async_get(self):
-        q = mixedqueue.Queue(loop=self.loop)
+        q = janus.Queue(loop=self.loop)
 
         def threaded():
             for i in range(5):
@@ -61,7 +61,7 @@ class TestMixedMode(unittest.TestCase):
             self.loop.run_until_complete(go())
 
     def test_async_put_sync_get(self):
-        q = mixedqueue.Queue(loop=self.loop)
+        q = janus.Queue(loop=self.loop)
 
         def threaded():
             for i in range(5):
@@ -81,7 +81,7 @@ class TestMixedMode(unittest.TestCase):
             self.loop.run_until_complete(go())
 
     def test_sync_join_async_done(self):
-        q = mixedqueue.Queue(loop=self.loop)
+        q = janus.Queue(loop=self.loop)
 
         def threaded():
             for i in range(5):
@@ -104,7 +104,7 @@ class TestMixedMode(unittest.TestCase):
             self.loop.run_until_complete(go())
 
     def test_async_join_async_done(self):
-        q = mixedqueue.Queue(loop=self.loop)
+        q = janus.Queue(loop=self.loop)
 
         def threaded():
             for i in range(5):
@@ -127,7 +127,7 @@ class TestMixedMode(unittest.TestCase):
             self.loop.run_until_complete(go())
 
     def test_wait_without_closing(self):
-        q = mixedqueue.Queue(loop=self.loop)
+        q = janus.Queue(loop=self.loop)
 
         with self.assertRaises(RuntimeError):
             self.loop.run_until_complete(q.wait_closed())
@@ -136,7 +136,7 @@ class TestMixedMode(unittest.TestCase):
         self.loop.run_until_complete(q.wait_closed())
 
     def test_modifying_forbidden_after_closing(self):
-        q = mixedqueue.Queue(loop=self.loop)
+        q = janus.Queue(loop=self.loop)
         q.close()
 
         with self.assertRaises(RuntimeError):
@@ -163,7 +163,7 @@ class TestMixedMode(unittest.TestCase):
         self.loop.run_until_complete(q.wait_closed())
 
     def test_double_closing(self):
-        q = mixedqueue.Queue(loop=self.loop)
+        q = janus.Queue(loop=self.loop)
         q.close()
         q.close()
         self.loop.run_until_complete(q.wait_closed())

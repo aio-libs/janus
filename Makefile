@@ -2,7 +2,7 @@ develop:
 	python setup.py develop
 
 flake:
-	flake8 mixedqueue tests
+	flake8 janus tests
 
 test: flake develop
 	py.test tests
@@ -11,8 +11,8 @@ vtest: flake develop
 	py.test -v tests
 
 yapf:
-	yapf -ri mixedqueue tests setup.py
+	yapf -ri janus tests setup.py
 
 cov: flake develop
-	py.test --cov=mixedqueue --cov=tests --cov-report=term --cov-report=html
+	py.test --cov=janus --cov=tests --cov-report=term --cov-report=html
 	@echo "open file://`pwd`/htmlcov/index.html"

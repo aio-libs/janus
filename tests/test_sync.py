@@ -7,7 +7,7 @@ import unittest
 
 import threading
 
-import mixedqueue
+import janus
 
 QUEUE_SIZE = 5
 
@@ -251,15 +251,15 @@ class BaseQueueTestMixin(BlockingTestMixin):
 
 
 class QueueTest(BaseQueueTestMixin, unittest.TestCase):
-    type2test = mixedqueue.Queue
+    type2test = janus.Queue
 
 
 class LifoQueueTest(BaseQueueTestMixin, unittest.TestCase):
-    type2test = mixedqueue.LifoQueue
+    type2test = janus.LifoQueue
 
 
 class PriorityQueueTest(BaseQueueTestMixin, unittest.TestCase):
-    type2test = mixedqueue.PriorityQueue
+    type2test = janus.PriorityQueue
 
 
 # A Queue subclass that can provoke failure at a moment's notice :)
@@ -267,7 +267,7 @@ class FailingQueueException(Exception):
     pass
 
 
-class FailingQueue(mixedqueue.Queue):
+class FailingQueue(janus.Queue):
     def __init__(self, *args, **kwargs):
         self.fail_next_put = False
         self.fail_next_get = False
