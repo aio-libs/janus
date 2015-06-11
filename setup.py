@@ -46,7 +46,7 @@ setup(
     version=version,
     description=("Mixed sync-async queue to interoperate between "
                  "asyncio tasks and classic threads"),
-    # long_description='\n\n'.join((read('README.rst'), read('CHANGES.txt'))),
+    long_description='\n\n'.join((read('README.rst'), read('CHANGES.txt'))),
     classifiers=[
         'License :: OSI Approved :: Apache Software License',
         'Intended Audience :: Developers', 'Programming Language :: Python',
@@ -54,8 +54,8 @@ setup(
         'Programming Language :: Python :: 3.3',
         'Programming Language :: Python :: 3.4', 'Topic :: Internet :: WWW/HTTP'
     ],
-    author='eleddy',
-    author_email='',
+    author='Andrew Svetlov',
+    author_email='andrew.svetlov@gmail.com',
     url='https://github.com/aio-libs/aiohttp_security/',
     license='Apache 2',
     packages=find_packages(),

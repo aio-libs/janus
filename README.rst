@@ -1,3 +1,4 @@
+=====
 janus
 =====
 
@@ -14,7 +15,7 @@ follows `asyncio queue design
 <https://docs.python.org/3/library/asyncio-queue.html>`_.
 
 Usage example
--------------
+=============
 
 ::
 
@@ -43,7 +44,7 @@ Usage example
     loop.run_until_complete(async_coro())
 
 License
--------
+=======
 
 ``janus`` library is offered under Apache 2 license.
 
