@@ -9,7 +9,7 @@ from queue import Empty as SyncQueueEmpty
 from queue import Full as SyncQueueFull
 from time import monotonic
 
-__version__ = '0.0.1'
+__version__ = '0.0.2'
 
 log = logging.getLogger(__package__)
 
