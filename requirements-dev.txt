@@ -1,0 +1,7 @@
+-e .
+ipython
+ipdb
+coverage
+flake8
+pytest
+pytest-cov
