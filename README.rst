@@ -1,7 +1,7 @@
 janus
 =====
 
-Mixed sync-async queue, supposed to use for communicating between
+Mixed sync-async queue, supposed to be used for communicating between
 classic synchronous (threaded) code and asynchronous (in terms of
 asyncio_) one.
 
