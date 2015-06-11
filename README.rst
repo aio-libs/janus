@@ -32,16 +32,17 @@ Usage example
 
     @asyncio.coroutine
     def async_coro(async_q):
-        fut = loop.run_in_executor(None, threaded)
 
         for i in range(100):
             val = yield from async_q.get()
             assert val == i
             async_q.task_done()
 
-        yield from fut
 
-    loop.run_until_complete(async_coro())
+    fut = loop.run_in_executor(None, lambda: threaded(sync_q))
+    loop.run_until_complete(async_coro(q.async_q))
+    loop.run_until_complete(fut)
+
 
 License
 =======
