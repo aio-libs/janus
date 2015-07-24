@@ -7,9 +7,8 @@ from collections import deque
 from heapq import heappop, heappush
 from queue import Empty as SyncQueueEmpty
 from queue import Full as SyncQueueFull
-from time import monotonic
 
-__version__ = '0.1.4'
+__version__ = '0.1.5'
 
 log = logging.getLogger(__package__)
 
@@ -263,9 +262,10 @@ class _SyncQueueProxy:
                 elif timeout < 0:
                     raise ValueError("'timeout' must be a non-negative number")
                 else:
-                    endtime = monotonic() + timeout
+                    time = self._parent._loop.time
+                    endtime = time() + timeout
                     while self._parent._qsize() >= self._parent._maxsize:
-                        remaining = endtime - monotonic()
+                        remaining = endtime - time()
                         if remaining <= 0.0:
                             raise SyncQueueFull
                         self._parent._sync_not_full.wait(remaining)
@@ -296,9 +296,10 @@ class _SyncQueueProxy:
             elif timeout < 0:
                 raise ValueError("'timeout' must be a non-negative number")
             else:
-                endtime = monotonic() + timeout
+                time = self._parent._loop.time
+                endtime = time() + timeout
                 while not self._parent._qsize():
-                    remaining = endtime - monotonic()
+                    remaining = endtime - time()
                     if remaining <= 0.0:
                         raise SyncQueueEmpty
                     self._parent._sync_not_empty.wait(remaining)
