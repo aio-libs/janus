@@ -45,8 +45,8 @@ tests_require = install_requires + ['py.tests']
 extras_require = {}
 
 
-if not PY_35:
-    install_requires.append('typing')
+# if not PY_35:
+#     install_requires.append('typing')
 
 
 setup(
