@@ -6,6 +6,8 @@ import sys
 
 from setuptools.command.test import test as TestCommand
 
+PY_35 = sys.version_info >= (3, 5)
+
 
 class PyTest(TestCommand):
     user_options = [('pytest-args=', 'a', "Arguments to pass to py.test")]
@@ -41,6 +43,10 @@ def read(f):
 install_requires = []
 tests_require = install_requires + ['py.tests']
 extras_require = {}
+
+
+if not PY_35:
+    install_requires.append('typing')
 
 
 setup(

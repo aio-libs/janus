@@ -5,3 +5,4 @@ coverage
 flake8
 pytest
 pytest-cov
+mypy-lang
