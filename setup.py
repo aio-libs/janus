@@ -6,6 +6,7 @@ import sys
 
 from setuptools.command.test import test as TestCommand
 
+PY_33 = sys.version_info < (3, 4)
 PY_35 = sys.version_info >= (3, 5)
 
 
@@ -41,12 +42,15 @@ def read(f):
 
 
 install_requires = []
-tests_require = install_requires + ['py.tests']
-extras_require = {}
 
+if PY_33:
+    install_requires.append('asyncio')
 
 # if not PY_35:
 #     install_requires.append('typing')
+
+tests_require = install_requires + ['py.tests']
+extras_require = {}
 
 
 setup(

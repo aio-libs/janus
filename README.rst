@@ -1,13 +1,14 @@
-=====
-janus
-=====
+=======
+ janus
+=======
 
 Mixed sync-async queue, supposed to be used for communicating between
 classic synchronous (threaded) code and asynchronous (in terms of
 asyncio_) one.
 
-Like Janus_ god the queue object from the library has two faces:
-synchronous and asynchronous interface.
+Like `Janus god <https://en.wikipedia.org/wiki/Janus>`_ the queue
+object from the library has two faces: synchronous and asynchronous
+interface.
 
 Synchronous is fully compatible with `standard queue
 <https://docs.python.org/3/library/queue.html>`_, asynchronous one
@@ -55,5 +56,4 @@ Thanks
 
 The library development is sponsored by DataRobot (http://datarobot.com/)
 
-.. _Janus: https://en.wikipedia.org/wiki/Janus
 .. _asyncio: https://docs.python.org/3/library/asyncio.html

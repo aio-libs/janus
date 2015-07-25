@@ -38,19 +38,16 @@ class Queue:
 
         self._closing = False
         self._pending = set()
-        if hasattr(loop, 'is_closed'):
-            def checked_call_soon_threadsafe(callback, *args):
-                if not loop.is_closed():
-                    loop.call_soon_threadsafe(callback, *args)
-            self._call_soon_threadsafe = checked_call_soon_threadsafe
 
-            def checked_call_soon(callback, *args):
-                if not loop.is_closed():
-                    loop.call_soon(callback, *args)
-            self._call_soon = checked_call_soon
-        else:
-            self._call_soon_threadsafe = loop.call_soon_threadsafe
-            self._call_soon = loop.call_soon
+        def checked_call_soon_threadsafe(callback, *args):
+            if not loop.is_closed():
+                loop.call_soon_threadsafe(callback, *args)
+        self._call_soon_threadsafe = checked_call_soon_threadsafe
+
+        def checked_call_soon(callback, *args):
+            if not loop.is_closed():
+                loop.call_soon(callback, *args)
+        self._call_soon = checked_call_soon
 
         self._sync_queue = _SyncQueueProxy(self)
         self._async_queue = _AsyncQueueProxy(self)
