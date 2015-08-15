@@ -1,6 +1,7 @@
 # Some simple queue module tests, plus some failure conditions
 # to ensure the Queue locks remain stable.
 import asyncio
+import concurrent.futures
 import queue
 import time
 import unittest
@@ -53,9 +54,12 @@ class BlockingTestMixin:
     def setUp(self):
         asyncio.set_event_loop(None)
         self.loop = asyncio.new_event_loop()
+        self.executor = concurrent.futures.ThreadPoolExecutor(max_workers=5)
+        self.loop.set_default_executor(self.executor)
 
     def tearDown(self):
         self.t = None
+        self.executor.shutdown()
         self.loop.close()
 
     def do_blocking_test(self, block_func, block_args, trigger_func,

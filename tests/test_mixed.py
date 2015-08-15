@@ -1,4 +1,5 @@
 import asyncio
+import concurrent.futures
 import unittest
 
 from unittest import mock
@@ -9,9 +10,12 @@ import janus
 class TestMixedMode(unittest.TestCase):
     def setUp(self):
         self.loop = asyncio.new_event_loop()
+        self.executor = concurrent.futures.ThreadPoolExecutor(max_workers=5)
+        self.loop.set_default_executor(self.executor)
         asyncio.set_event_loop(None)
 
     def tearDown(self):
+        self.executor.shutdown()
         self.loop.close()
 
     def test_ctor_loop(self):
