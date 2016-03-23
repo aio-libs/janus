@@ -49,7 +49,7 @@ if PY_33:
 # if not PY_35:
 #     install_requires.append('typing')
 
-tests_require = install_requires + ['py.tests']
+tests_require = install_requires + ['py.test']
 extras_require = {}
 
 
