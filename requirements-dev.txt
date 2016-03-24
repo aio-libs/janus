@@ -7,3 +7,5 @@ pytest
 pytest-cov
 mypy-lang
 tox
+wheel
+docutils

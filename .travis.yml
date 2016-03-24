@@ -15,7 +15,26 @@ install:
   - pip install -r requirements-dev.txt
 
 script:
+  - python setup.py check -rms
   - tox
 
 
-cache: apt
+cache: 
+  - apt
+  - directories:
+    - $HOME/.cache/pip
+
+
+before_cache:
+  - rm -f $HOME/.cache/pip/log/debug.log
+
+deploy:
+  provider: pypi
+  user: andrew.svetlov
+  password:
+    secure: vm7/iwk1LNrhDPiQ3LnFNxgUgovwIZZkkB85YMoMLfQVautxR0PRf3Xd/h2rAwZ6kaT74rD6GFn5PyvVDDvGQB/utEnXh/MjhjG4mVQuqcXfF6mlWRqz0chIhQ2chS1MUL2R5PXpY4vI+Jvk6uaBz7Prl9pRYzIbEgHvac32/wxdvCXxPQ7pVsmwa+A6UhaZ52hoOdlN5ALNfkcpxC/iRu1Pvesk90oDUc422FizdC1z5zEyLq+2Y1ewGS2+JldkI05ohmAN1/n8mkHWbbeJhCdBaO7t2Z4aNLDf8O4ewEwAy6M4Fe9DkQag60EqxOpufXF0Pm7TbCU1JQSBPZEGflGQf+Wv1hknZ/mxsc1BOA0OhY1zHsEFPUj1NDE5jWrzzWqlL9zX50mkPVJKlXnqYcx7GPXScXgXbd1xyYKpxnlfIxS3iCllPFi12YUQHphlHYAtx9m7+D0QPS6jzbT/xYBWtEnm+gvGquXNhJ16UxnqqOEmze6ZJJhMQVz4MUqK+jgQai5T3iaBBNppUY0UwwX4YnSHB4hedINJjVBHPGMwedSIHFYQKO3kiBknfPUEI++MxflbWl2IhE+wS1C00vI4ZJctOGcHbXdANx+60aXDxV1jA/ZgOX1ErNtTADbcDT7R9nLaQcTsDyg+w0XuAtwUtUj6n+/AAdebh4bO2tk=
+  distributions: "sdist bdist_wheel"
+  on:
+    tags: true
+    all_branches: true
+    python: 3.5
