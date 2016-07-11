@@ -1,6 +1,11 @@
 Changes
 =======
 
+0.2.2 (2016-07-11)
+------------------
+
+- Update asyncio.async() to use asyncio.ensure_future() #6
+
 0.2.1 (2016-03-24)
 ------------------
 

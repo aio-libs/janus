@@ -15,7 +15,7 @@ log = logging.getLogger(__package__)
 
 try:
     ensure_future = asyncio.ensure_future
-except NameError:
+except AttributeError:
     ensure_future = asyncio.async
 
 
