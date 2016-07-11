@@ -8,9 +8,15 @@ from heapq import heappop, heappush
 from queue import Empty as SyncQueueEmpty
 from queue import Full as SyncQueueFull
 
-__version__ = '0.2.1'
+__version__ = '0.2.2'
 
 log = logging.getLogger(__package__)
+
+
+try:
+    ensure_future = asyncio.ensure_future
+except NameError:
+    ensure_future = asyncio.async
 
 
 class Queue:
@@ -128,7 +134,7 @@ class Queue:
                 self._async_not_empty.notify()
 
         def task_maker():
-            task = asyncio.async(f(), loop=self._loop)
+            task = ensure_future(f(), loop=self._loop)
             task.add_done_callback(self._pending.discard)
             self._pending.add(task)
 
@@ -144,7 +150,7 @@ class Queue:
                 self._async_not_full.notify()
 
         def task_maker():
-            task = asyncio.async(f(), loop=self._loop)
+            task = ensure_future(f(), loop=self._loop)
             task.add_done_callback(self._pending.discard)
             self._pending.add(task)
 
