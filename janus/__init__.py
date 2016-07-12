@@ -8,7 +8,7 @@ from heapq import heappop, heappush
 from queue import Empty as SyncQueueEmpty
 from queue import Full as SyncQueueFull
 
-__version__ = '0.2.2'
+__version__ = '0.2.3'
 
 log = logging.getLogger(__package__)
 
