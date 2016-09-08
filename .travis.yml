@@ -13,10 +13,12 @@ before_install:
 
 install:
   - pip install -r requirements-dev.txt
+  - pip install mypy-lang
 
 script:
   - python setup.py check -rms
   - tox
+  - mypy janus
 
 
 cache: 
