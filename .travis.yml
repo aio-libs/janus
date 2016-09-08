@@ -18,7 +18,7 @@ install:
 script:
   - python setup.py check -rms
   - tox
-  - mypy janus
+  - mypy janus/__init__.pyi
 
 
 cache: 
