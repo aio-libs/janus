@@ -6,6 +6,6 @@ flake8
 pytest
 pytest-cov
 mypy-lang
-tox
+tox==2.3.1
 wheel
 docutils
