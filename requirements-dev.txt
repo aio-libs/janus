@@ -5,7 +5,7 @@ coverage
 flake8
 pytest
 pytest-cov
-mypy-lang
+mypy-lang==0.4.4
 tox==2.3.1
 wheel==0.29.0
 docutils==0.12
