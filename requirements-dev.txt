@@ -3,7 +3,7 @@ ipython
 ipdb==0.10.1
 coverage
 flake8
-pytest
+pytest==3.0.2
 pytest-cov
 mypy-lang==0.4.4
 tox==2.3.1
