@@ -1,7 +1,7 @@
 -e .
 ipython
 ipdb==0.10.1
-coverage
+coverage==4.2
 flake8
 pytest==3.0.2
 pytest-cov
