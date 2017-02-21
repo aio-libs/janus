@@ -43,6 +43,20 @@ class TestMixedMode(unittest.TestCase):
         q = janus.Queue(loop=self.loop)
         self.assertIs(0, q.maxsize)
 
+    def test_unfinished(self):
+        q = janus.Queue(loop=self.loop)
+        self.assertEqual(q.sync_q.unfinished_tasks, 0)
+        self.assertEqual(q.async_q.unfinished_tasks, 0)
+        q.sync_q.put(1)
+        self.assertEqual(q.sync_q.unfinished_tasks, 1)
+        self.assertEqual(q.async_q.unfinished_tasks, 1)
+        q.sync_q.get()
+        self.assertEqual(q.sync_q.unfinished_tasks, 1)
+        self.assertEqual(q.async_q.unfinished_tasks, 1)
+        q.sync_q.task_done()
+        self.assertEqual(q.sync_q.unfinished_tasks, 0)
+        self.assertEqual(q.async_q.unfinished_tasks, 0)
+        
     def test_sync_put_async_get(self):
         q = janus.Queue(loop=self.loop)
 
