@@ -219,6 +219,11 @@ class _SyncQueueProxy:
         '''Return the approximate size of the queue (not reliable!).'''
         return self._parent._qsize()
 
+    @property
+    def unfinished_tasks(self):
+        '''Return the number of unfinished tasks.'''
+        return self._parent._unfinished_tasks
+
     def empty(self):
         '''Return True if the queue is empty, False otherwise (not reliable!).
 
@@ -340,6 +345,11 @@ class _AsyncQueueProxy:
     def qsize(self):
         """Number of items in the queue."""
         return self._parent._qsize()
+
+    @property
+    def unfinished_tasks(self):
+        '''Return the number of unfinished tasks.'''
+        return self._parent._unfinished_tasks
 
     @property
     def maxsize(self):
