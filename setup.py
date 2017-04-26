@@ -66,7 +66,8 @@ setup(
         'Programming Language :: Python :: 3.3',
         'Programming Language :: Python :: 3.4',
         'Programming Language :: Python :: 3.5',
-        'Topic :: Software Development :: Libraries'
+        'Topic :: Software Development :: Libraries',
+        'Framework :: AsyncIO',
     ],
     author='Andrew Svetlov',
     author_email='andrew.svetlov@gmail.com',
