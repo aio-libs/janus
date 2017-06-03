@@ -1,5 +1,5 @@
 -e .
-ipython==6.0.0
+ipython==6.1.0
 ipdb==0.10.3
 coverage==4.4.1
 flake8==3.3.0
