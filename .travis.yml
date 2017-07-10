@@ -21,7 +21,7 @@ script:
   - mypy janus
 
 
-cache: 
+cache:
   - apt
   - directories:
     - $HOME/.cache/pip
