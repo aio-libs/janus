@@ -53,6 +53,16 @@ Usage example
     loop.run_until_complete(fut)
 
 
+Communication channels
+======================
+
+*aio-libs* google group: https://groups.google.com/forum/#!forum/aio-libs
+
+Feel free to post your questions and ideas here.
+
+*gitter chat* https://gitter.im/aio-libs/Lobby
+
+
 License
 =======
 
@@ -61,6 +71,6 @@ License
 Thanks
 ======
 
-The library development is sponsored by DataRobot (http://datarobot.com/)
+The library development is sponsored by DataRobot (https://datarobot.com)
 
 .. _asyncio: https://docs.python.org/3/library/asyncio.html
