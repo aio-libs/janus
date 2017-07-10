@@ -18,7 +18,7 @@ follows `asyncio queue design
 Usage example
 =============
 
-::
+.. code:: python
 
     import asyncio
     import janus
@@ -33,10 +33,9 @@ Usage example
         sync_q.join()
 
 
-    @asyncio.coroutine
-    def async_coro(async_q):
+    async def async_coro(async_q):
         for i in range(100):
-            val = yield from async_q.get()
+            val = await async_q.get()
             assert val == i
             async_q.task_done()
 
