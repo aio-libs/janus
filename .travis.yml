@@ -13,7 +13,8 @@ before_install:
 
 install:
   - pip install -r requirements-dev.txt
-  - pip install mypy-lang
+  - pip install mypy
+  - pip install codecov
 
 script:
   - python setup.py check -rms
@@ -29,6 +30,9 @@ cache:
 
 before_cache:
   - rm -f $HOME/.cache/pip/log/debug.log
+
+after_success:
+    codecov
 
 deploy:
   provider: pypi
