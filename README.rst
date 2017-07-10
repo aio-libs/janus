@@ -1,6 +1,14 @@
 =======
  janus
 =======
+.. image:: https://travis-ci.org/aio-libs/janus.svg?branch=master
+    :target: https://travis-ci.org/aio-libs/janus
+.. image:: https://codecov.io/gh/aio-libs/janus/branch/master/graph/badge.svg
+    :target: https://codecov.io/gh/aio-libs/janus
+.. image:: https://img.shields.io/pypi/v/janus.svg
+    :target: https://pypi.python.org/pypi/janus
+
+
 
 Mixed sync-async queue, supposed to be used for communicating between
 classic synchronous (threaded) code and asynchronous (in terms of
