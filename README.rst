@@ -7,6 +7,9 @@
     :target: https://codecov.io/gh/aio-libs/janus
 .. image:: https://img.shields.io/pypi/v/janus.svg
     :target: https://pypi.python.org/pypi/janus
+.. image:: https://badges.gitter.im/Join%20Chat.svg
+    :target: https://gitter.im/aio-libs/Lobby
+    :alt: Chat on Gitter
 
 
 
