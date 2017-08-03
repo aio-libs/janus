@@ -8,4 +8,4 @@ pytest-cov==2.5.1
 mypy-lang==0.4.6
 tox==2.7.0
 wheel==0.29.0
-docutils==0.13.1
+docutils==0.14
