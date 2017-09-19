@@ -1,11 +1,11 @@
 -e .
-ipython==6.1.0
+ipython==6.2.0
 ipdb==0.10.3
 coverage==4.4.1
 flake8==3.4.1
 pytest==3.2.2
 pytest-cov==2.5.1
 mypy-lang==0.5.0
-tox==2.8.0
+tox==2.8.2
 wheel==0.30.0
 docutils==0.14
