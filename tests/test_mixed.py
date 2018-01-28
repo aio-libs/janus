@@ -86,7 +86,7 @@ class TestMixedMode(unittest.TestCase):
 
         @asyncio.coroutine
         def do_work():
-            yield from asyncio.sleep(1)
+            yield from asyncio.sleep(1, loop=self.loop)
             while True:
                 yield from q.async_q.get()
                 q.async_q.task_done()
