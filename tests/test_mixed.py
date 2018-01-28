@@ -95,8 +95,7 @@ class TestMixedMode(unittest.TestCase):
 
         @asyncio.coroutine
         def wait_for_empty_queue():
-            while not q.async_q.empty():
-                yield from q.async_q.join()
+            yield from q.async_q.join()
             task.cancel()
 
         self.loop.run_until_complete(wait_for_empty_queue())
