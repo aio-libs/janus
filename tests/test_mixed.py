@@ -78,6 +78,29 @@ class TestMixedMode(unittest.TestCase):
         for i in range(3):
             self.loop.run_until_complete(go())
 
+    def test_sync_put_async_join(self):
+        q = janus.Queue(loop=self.loop)
+
+        for i in range(5):
+            q.sync_q.put(i)
+
+        @asyncio.coroutine
+        def do_work():
+            yield from asyncio.sleep(1)
+            while True:
+                yield from q.async_q.get()
+                q.async_q.task_done()
+
+        task = self.loop.create_task(do_work())
+
+        @asyncio.coroutine
+        def wait_for_empty_queue():
+            while not q.async_q.empty():
+                yield from q.async_q.join()
+            task.cancel()
+
+        self.loop.run_until_complete(wait_for_empty_queue())
+
     def test_async_put_sync_get(self):
         q = janus.Queue(loop=self.loop)
 
