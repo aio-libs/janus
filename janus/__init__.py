@@ -277,8 +277,7 @@ class _SyncQueueProxy:
                         if remaining <= 0.0:
                             raise SyncQueueFull
                         self._parent._sync_not_full.wait(remaining)
-            self._parent._put(item)
-            self._parent._unfinished_tasks += 1
+            self._parent._put_internal(item)
             self._parent._sync_not_empty.notify()
             self._parent._notify_async_not_empty(threadsafe=True)
 
