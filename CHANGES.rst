@@ -1,7 +1,7 @@
 Changes
 =======
 
-0.3.1 (YYYY-MM-DD)
+0.3.1 (2018-01-30)
 ------------------
 
 - Fixed bug with join() in case tasks are added by sync_q.put() #75
