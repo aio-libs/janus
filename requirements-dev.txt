@@ -7,5 +7,5 @@ pytest==3.5.1
 pytest-cov==2.5.1
 mypy-lang==0.5.0
 tox==3.0.0
-wheel==0.31.0
+wheel==0.31.1
 docutils==0.14
