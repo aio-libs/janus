@@ -1,7 +1,7 @@
 =======
  janus
 =======
-.. image:: https://travis-ci.org/aio-libs/janus.svg?branch=master
+.. image:: https://travis-ci.com/aio-libs/janus.svg?branch=master
     :target: https://travis-ci.org/aio-libs/janus
 .. image:: https://codecov.io/gh/aio-libs/janus/branch/master/graph/badge.svg
     :target: https://codecov.io/gh/aio-libs/janus
