@@ -178,7 +178,7 @@ class QueueGetTests(_QueueTestBase):
 
         @asyncio.coroutine
         def put():
-            t = asyncio.async(q.put(2), loop=self.loop)
+            t = janus.ensure_future(q.put(2), loop=self.loop)
             yield from asyncio.sleep(0.01, loop=self.loop)
             fut.set_result(None)
             return t
