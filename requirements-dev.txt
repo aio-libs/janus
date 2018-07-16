@@ -3,9 +3,9 @@ ipython==6.4.0
 ipdb==0.11
 coverage==4.5.1
 flake8==3.5.0
-pytest==3.6.2
+pytest==3.6.3
 pytest-cov==2.5.1
 mypy-lang==0.5.0
-tox==3.0.0
+tox==3.1.2
 wheel==0.31.1
 docutils==0.14
