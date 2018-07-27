@@ -60,7 +60,6 @@ class Queue:
 
     def close(self):
         with self._sync_mutex:
-            # TODO: forbid queue modification if closing is set
             self._closing = True
             for fut in self._pending:
                 fut.cancel()
