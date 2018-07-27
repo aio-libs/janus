@@ -46,8 +46,11 @@ class Queue:
         self._pending = set()
 
         def checked_call_soon_threadsafe(callback, *args):
-            if not loop.is_closed():
+            try:
                 loop.call_soon_threadsafe(callback, *args)
+            except RuntimeError:
+                # swallowing agreed in #2
+                pass
         self._call_soon_threadsafe = checked_call_soon_threadsafe
 
         def checked_call_soon(callback, *args):
