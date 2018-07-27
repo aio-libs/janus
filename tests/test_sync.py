@@ -5,6 +5,7 @@ import concurrent.futures
 import queue
 import time
 import unittest
+from unittest.mock import patch
 
 import threading
 
@@ -379,6 +380,14 @@ class FailingQueueTest(BlockingTestMixin, unittest.TestCase):
         q = FailingQueue(QUEUE_SIZE, loop=self.loop)
         self.failing_queue_test(q)
         self.failing_queue_test(q)
+
+    def test_closed_loop_non_failing(self):
+        q = janus.Queue(QUEUE_SIZE, loop=self.loop).sync_q
+        # we are pacthing loop to follow setUp/tearDown agreement
+        with patch.object(self.loop, 'call_soon_threadsafe') as func:
+            func.side_effect = RuntimeError()
+            q.put_nowait(1)
+            self.assertEqual(func.call_count, 1)
 
 
 if __name__ == "__main__":
