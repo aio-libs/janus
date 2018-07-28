@@ -64,16 +64,15 @@ class TestMixedMode(unittest.TestCase):
             for i in range(5):
                 q.sync_q.put(i)
 
-        @asyncio.coroutine
-        def go():
+        async def go():
             f = self.loop.run_in_executor(None, threaded)
             for i in range(5):
-                val = yield from q.async_q.get()
+                val = await q.async_q.get()
                 self.assertEqual(val, i)
 
             self.assertTrue(q.async_q.empty())
 
-            yield from f
+            await f
 
         for i in range(3):
             self.loop.run_until_complete(go())
@@ -84,18 +83,16 @@ class TestMixedMode(unittest.TestCase):
         for i in range(5):
             q.sync_q.put(i)
 
-        @asyncio.coroutine
-        def do_work():
-            yield from asyncio.sleep(1, loop=self.loop)
+        async def do_work():
+            await asyncio.sleep(1)
             while True:
-                yield from q.async_q.get()
+                await q.async_q.get()
                 q.async_q.task_done()
 
         task = self.loop.create_task(do_work())
 
-        @asyncio.coroutine
-        def wait_for_empty_queue():
-            yield from q.async_q.join()
+        async def wait_for_empty_queue():
+            await q.async_q.join()
             task.cancel()
 
         self.loop.run_until_complete(wait_for_empty_queue())
@@ -108,13 +105,12 @@ class TestMixedMode(unittest.TestCase):
                 val = q.sync_q.get()
                 self.assertEqual(val, i)
 
-        @asyncio.coroutine
-        def go():
+        async def go():
             f = self.loop.run_in_executor(None, threaded)
             for i in range(5):
-                yield from q.async_q.put(i)
+                await q.async_q.put(i)
 
-            yield from f
+            await f
             self.assertTrue(q.async_q.empty())
 
         for i in range(3):
@@ -128,17 +124,16 @@ class TestMixedMode(unittest.TestCase):
                 q.sync_q.put(i)
             q.sync_q.join()
 
-        @asyncio.coroutine
-        def go():
+        async def go():
             f = self.loop.run_in_executor(None, threaded)
             for i in range(5):
-                val = yield from q.async_q.get()
+                val = await q.async_q.get()
                 self.assertEqual(val, i)
                 q.async_q.task_done()
 
             self.assertTrue(q.async_q.empty())
 
-            yield from f
+            await f
 
         for i in range(3):
             self.loop.run_until_complete(go())
@@ -152,15 +147,14 @@ class TestMixedMode(unittest.TestCase):
                 self.assertEqual(val, i)
                 q.sync_q.task_done()
 
-        @asyncio.coroutine
-        def go():
+        async def go():
             f = self.loop.run_in_executor(None, threaded)
             for i in range(5):
-                yield from q.async_q.put(i)
+                await q.async_q.put(i)
 
-            yield from q.async_q.join()
+            await q.async_q.join()
 
-            yield from f
+            await f
             self.assertTrue(q.async_q.empty())
 
         for i in range(3):
