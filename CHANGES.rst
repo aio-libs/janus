@@ -6,6 +6,8 @@ Changes
 
 - Add ``py.typed`` macro #89
 
+- Drop python 3.4 support and fix minimal version python3.5.3 #88
+
 0.3.2 (2018-07-06)
 ------------------
 
