@@ -57,3 +57,5 @@ docs/_build/
 target/
 
 coverage
+
+.pytest_cache
