@@ -74,6 +74,7 @@ setup(
     url='https://github.com/aio-libs/janus/',
     license='Apache 2',
     packages=find_packages(),
+    python_requires='>=3.5.3',
     install_requires=install_requires,
     tests_require=tests_require,
     cmdclass={'test': PyTest},

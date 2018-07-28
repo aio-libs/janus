@@ -67,8 +67,7 @@ class Queue:
             for fut in self._pending:
                 fut.cancel()
 
-    @asyncio.coroutine
-    def wait_closed(self):
+    async def wait_closed(self):
         # should be called from loop after close().
         # Nobody should put/get at this point,
         # so lock acquiring is not required
@@ -76,7 +75,7 @@ class Queue:
             raise RuntimeError("Waiting for non-closed queue")
         if not self._pending:
             return
-        yield from asyncio.wait(self._pending, loop=self._loop)
+        await asyncio.wait(self._pending, loop=self._loop)
 
     @property
     def maxsize(self):
@@ -130,9 +129,8 @@ class Queue:
         self._pending.add(fut)
 
     def _notify_async_not_empty(self, *, threadsafe):
-        @asyncio.coroutine
-        def f():
-            with (yield from self._async_mutex):
+        async def f():
+            async with self._async_mutex:
                 self._async_not_empty.notify()
 
         def task_maker():
@@ -146,9 +144,8 @@ class Queue:
             self._call_soon(task_maker)
 
     def _notify_async_not_full(self, *, threadsafe):
-        @asyncio.coroutine
-        def f():
-            with (yield from self._async_mutex):
+        async def f():
+            async with self._async_mutex:
                 self._async_not_full.notify()
 
         def task_maker():
@@ -372,8 +369,7 @@ class _AsyncQueueProxy:
         else:
             return self.qsize() >= self._parent._maxsize
 
-    @asyncio.coroutine
-    def put(self, item):
+    async def put(self, item):
         """Put an item into the queue.
 
         Put an item into the queue. If the queue is full, wait until a free
@@ -382,7 +378,7 @@ class _AsyncQueueProxy:
         This method is a coroutine.
         """
         self._parent._check_closing()
-        with (yield from self._parent._async_not_full):
+        async with self._parent._async_not_full:
             self._parent._sync_mutex.acquire()
             locked = True
             try:
@@ -395,7 +391,7 @@ class _AsyncQueueProxy:
                         if do_wait:
                             locked = False
                             self._parent._sync_mutex.release()
-                            yield from self._parent._async_not_full.wait()
+                            await self._parent._async_not_full.wait()
                             self._parent._sync_mutex.acquire()
                             locked = True
 
@@ -421,8 +417,7 @@ class _AsyncQueueProxy:
             self._parent._notify_async_not_empty(threadsafe=False)
             self._parent._notify_sync_not_empty()
 
-    @asyncio.coroutine
-    def get(self):
+    async def get(self):
         """Remove and return an item from the queue.
 
         If queue is empty, wait until an item is available.
@@ -430,7 +425,7 @@ class _AsyncQueueProxy:
         This method is a coroutine.
         """
         self._parent._check_closing()
-        with (yield from self._parent._async_not_empty):
+        async with self._parent._async_not_empty:
             self._parent._sync_mutex.acquire()
             locked = True
             try:
@@ -441,7 +436,7 @@ class _AsyncQueueProxy:
                     if do_wait:
                         locked = False
                         self._parent._sync_mutex.release()
-                        yield from self._parent._async_not_empty.wait()
+                        await self._parent._async_not_empty.wait()
                         self._parent._sync_mutex.acquire()
                         locked = True
 
@@ -491,8 +486,7 @@ class _AsyncQueueProxy:
                 self._parent._finished.set()
                 self._parent._all_tasks_done.notify_all()
 
-    @asyncio.coroutine
-    def join(self):
+    async def join(self):
         """Block until all items in the queue have been gotten and processed.
 
         The count of unfinished tasks goes up whenever an item is added to the
@@ -504,7 +498,7 @@ class _AsyncQueueProxy:
             with self._parent._sync_mutex:
                 if self._parent._unfinished_tasks == 0:
                     break
-            yield from self._parent._finished.wait()
+            await self._parent._finished.wait()
 
 
 class PriorityQueue(Queue):
