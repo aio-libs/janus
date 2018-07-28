@@ -78,6 +78,10 @@ class Queue:
         await asyncio.wait(self._pending, loop=self._loop)
 
     @property
+    def closed(self):
+        return self._closing and not self._pending
+
+    @property
     def maxsize(self):
         return self._maxsize
 
@@ -175,6 +179,10 @@ class _SyncQueueProxy:
     @property
     def maxsize(self):
         return self._parent._maxsize
+
+    @property
+    def closed(self):
+        return self._parent.closed
 
     def task_done(self):
         '''Indicate that a formerly enqueued task is complete.
@@ -339,6 +347,10 @@ class _AsyncQueueProxy:
 
     def __init__(self, parent):
         self._parent = parent
+
+    @property
+    def closed(self):
+        return self._parent.closed
 
     def qsize(self):
         """Number of items in the queue."""

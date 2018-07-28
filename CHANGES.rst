@@ -8,6 +8,8 @@ Changes
 
 - Drop python 3.4 support and fix minimal version python3.5.3 #88
 
+- Add property with that indicates if queue is closed #86
+
 0.3.2 (2018-07-06)
 ------------------
 

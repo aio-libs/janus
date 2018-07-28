@@ -201,3 +201,13 @@ class TestMixedMode(unittest.TestCase):
         q.close()
         q.close()
         self.loop.run_until_complete(q.wait_closed())
+
+    def test_closed(self):
+        q = janus.Queue(loop=self.loop)
+        self.assertFalse(q.closed)
+        self.assertFalse(q.async_q.closed)
+        self.assertFalse(q.sync_q.closed)
+        q.close()
+        self.assertTrue(q.closed)
+        self.assertTrue(q.async_q.closed)
+        self.assertTrue(q.sync_q.closed)
