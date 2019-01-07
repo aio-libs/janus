@@ -4,7 +4,7 @@ ipdb==0.11
 coverage==4.5.2
 flake8==3.6.0
 pytest==4.1.0
-pytest-cov==2.6.0
+pytest-cov==2.6.1
 mypy-lang==0.5.0
 tox==3.6.1
 wheel==0.32.3
