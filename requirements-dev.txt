@@ -2,7 +2,7 @@
 ipython==7.2.0
 ipdb==0.11
 coverage==4.5.2
-flake8==3.6.0
+flake8==3.7.0
 pytest==4.1.1
 pytest-cov==2.6.1
 mypy-lang==0.5.0
