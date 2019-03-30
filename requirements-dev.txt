@@ -6,6 +6,6 @@ flake8==3.7.7
 pytest==4.3.1
 pytest-cov==2.6.1
 mypy-lang==0.5.0
-tox==3.8.0
+tox==3.8.3
 wheel==0.33.1
 docutils==0.14
