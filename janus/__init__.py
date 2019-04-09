@@ -1,5 +1,4 @@
 import asyncio
-import logging
 import threading
 from asyncio import QueueEmpty as AsyncQueueEmpty
 from asyncio import QueueFull as AsyncQueueFull
@@ -8,23 +7,24 @@ from heapq import heappop, heappush
 from queue import Empty as SyncQueueEmpty
 from queue import Full as SyncQueueFull
 
+from typing import (Generic, TypeVar, Optional, Any, Deque, List, Set,
+                    Callable)
+
+
 __version__ = '0.4.0'
 
-log = logging.getLogger(__package__)
+
+T = TypeVar('T')
+OptLoop = Optional[asyncio.AbstractEventLoop]
+OptInt = Optional[int]
 
 
-try:
-    ensure_future = asyncio.ensure_future
-except AttributeError:
-    ensure_future = getattr(asyncio, 'async')
-
-
-class Queue:
-    def __init__(self, maxsize=0, *, loop=None):
+class Queue(Generic[T]):
+    def __init__(self, maxsize: int = 0, *, loop: OptLoop = None) -> None:
         if loop is None:
             loop = asyncio.get_event_loop()
 
-        self._loop = loop
+        self._loop = loop  # type: asyncio.AbstractEventLoop
         self._maxsize = maxsize
 
         self._init(maxsize)
@@ -36,38 +36,42 @@ class Queue:
         self._sync_not_full = threading.Condition(self._sync_mutex)
         self._all_tasks_done = threading.Condition(self._sync_mutex)
 
-        self._async_mutex = asyncio.Lock(loop=loop)
-        self._async_not_empty = asyncio.Condition(self._async_mutex, loop=loop)
-        self._async_not_full = asyncio.Condition(self._async_mutex, loop=loop)
+        self._async_mutex = asyncio.Lock(loop=self._loop)
+        self._async_not_empty = asyncio.Condition(
+            self._async_mutex, loop=self._loop)
+        self._async_not_full = asyncio.Condition(
+            self._async_mutex, loop=self._loop)
         self._finished = asyncio.Event(loop=self._loop)
         self._finished.set()
 
         self._closing = False
-        self._pending = set()
+        self._pending = set()  # type: Set[asyncio.Future[Any]]
 
-        def checked_call_soon_threadsafe(callback, *args):
+        def checked_call_soon_threadsafe(
+                callback: Callable[..., None], *args: Any) -> None:
             try:
-                loop.call_soon_threadsafe(callback, *args)
+                self._loop.call_soon_threadsafe(callback, *args)
             except RuntimeError:
                 # swallowing agreed in #2
                 pass
         self._call_soon_threadsafe = checked_call_soon_threadsafe
 
-        def checked_call_soon(callback, *args):
-            if not loop.is_closed():
-                loop.call_soon(callback, *args)
+        def checked_call_soon(
+                callback: Callable[..., None], *args: Any) -> None:
+            if not self._loop.is_closed():
+                self._loop.call_soon(callback, *args)
         self._call_soon = checked_call_soon
 
         self._sync_queue = _SyncQueueProxy(self)
         self._async_queue = _AsyncQueueProxy(self)
 
-    def close(self):
+    def close(self) -> None:
         with self._sync_mutex:
             self._closing = True
             for fut in self._pending:
                 fut.cancel()
 
-    async def wait_closed(self):
+    async def wait_closed(self) -> None:
         # should be called from loop after close().
         # Nobody should put/get at this point,
         # so lock acquiring is not required
@@ -78,67 +82,67 @@ class Queue:
         await asyncio.wait(self._pending, loop=self._loop)
 
     @property
-    def closed(self):
+    def closed(self) -> bool:
         return self._closing and not self._pending
 
     @property
-    def maxsize(self):
+    def maxsize(self) -> int:
         return self._maxsize
 
     @property
-    def sync_q(self):
+    def sync_q(self) -> '_SyncQueueProxy[T]':
         return self._sync_queue
 
     @property
-    def async_q(self):
+    def async_q(self) -> '_AsyncQueueProxy[T]':
         return self._async_queue
 
     # Override these methods to implement other queue organizations
     # (e.g. stack or priority queue).
     # These will only be called with appropriate locks held
 
-    def _init(self, maxsize):
-        self._queue = deque()
+    def _init(self, maxsize: int) -> None:
+        self._queue = deque()  # type: Deque[T]
 
-    def _qsize(self):
+    def _qsize(self) -> int:
         return len(self._queue)
 
     # Put a new item in the queue
-    def _put(self, item):
+    def _put(self, item: T) -> None:
         self._queue.append(item)
 
     # Get an item from the queue
-    def _get(self):
+    def _get(self) -> T:
         return self._queue.popleft()
 
-    def _put_internal(self, item):
+    def _put_internal(self, item: T) -> None:
         self._put(item)
         self._unfinished_tasks += 1
         self._finished.clear()
 
-    def _notify_sync_not_empty(self):
-        def f():
+    def _notify_sync_not_empty(self) -> None:
+        def f() -> None:
             with self._sync_mutex:
                 self._sync_not_empty.notify()
 
         self._loop.run_in_executor(None, f)
 
-    def _notify_sync_not_full(self):
-        def f():
+    def _notify_sync_not_full(self) -> None:
+        def f() -> None:
             with self._sync_mutex:
                 self._sync_not_full.notify()
 
         fut = self._loop.run_in_executor(None, f)
-        fut.add_done_callback(self._pending.discard)
-        self._pending.add(fut)
+        fut.add_done_callback(self._pending.discard)  # type: ignore
+        self._pending.add(fut)  # type: ignore
 
-    def _notify_async_not_empty(self, *, threadsafe):
-        async def f():
+    def _notify_async_not_empty(self, *, threadsafe: bool) -> None:
+        async def f() -> None:
             async with self._async_mutex:
                 self._async_not_empty.notify()
 
-        def task_maker():
-            task = ensure_future(f(), loop=self._loop)
+        def task_maker() -> None:
+            task = asyncio.ensure_future(f(), loop=self._loop)
             task.add_done_callback(self._pending.discard)
             self._pending.add(task)
 
@@ -147,13 +151,13 @@ class Queue:
         else:
             self._call_soon(task_maker)
 
-    def _notify_async_not_full(self, *, threadsafe):
-        async def f():
+    def _notify_async_not_full(self, *, threadsafe: bool) -> None:
+        async def f() -> None:
             async with self._async_mutex:
                 self._async_not_full.notify()
 
-        def task_maker():
-            task = ensure_future(f(), loop=self._loop)
+        def task_maker() -> None:
+            task = asyncio.ensure_future(f(), loop=self._loop)
             task.add_done_callback(self._pending.discard)
             self._pending.add(task)
 
@@ -162,29 +166,29 @@ class Queue:
         else:
             self._call_soon(task_maker)
 
-    def _check_closing(self):
+    def _check_closing(self) -> None:
         if self._closing:
             raise RuntimeError('Modification of closed queue is forbidden')
 
 
-class _SyncQueueProxy:
+class _SyncQueueProxy(Generic[T]):
     '''Create a queue object with a given maximum size.
 
     If maxsize is <= 0, the queue size is infinite.
     '''
 
-    def __init__(self, parent):
+    def __init__(self, parent: Queue[T]):
         self._parent = parent
 
     @property
-    def maxsize(self):
+    def maxsize(self) -> int:
         return self._parent._maxsize
 
     @property
-    def closed(self):
+    def closed(self) -> bool:
         return self._parent.closed
 
-    def task_done(self):
+    def task_done(self) -> None:
         '''Indicate that a formerly enqueued task is complete.
 
         Used by Queue consumer threads.  For each get() used to fetch a task,
@@ -209,7 +213,7 @@ class _SyncQueueProxy:
                     self._parent._finished.set)
             self._parent._unfinished_tasks = unfinished
 
-    def join(self):
+    def join(self) -> None:
         '''Blocks until all items in the Queue have been gotten and processed.
 
         The count of unfinished tasks goes up whenever an item is added to the
@@ -222,16 +226,16 @@ class _SyncQueueProxy:
             while self._parent._unfinished_tasks:
                 self._parent._all_tasks_done.wait()
 
-    def qsize(self):
+    def qsize(self) -> int:
         '''Return the approximate size of the queue (not reliable!).'''
         return self._parent._qsize()
 
     @property
-    def unfinished_tasks(self):
+    def unfinished_tasks(self) -> int:
         '''Return the number of unfinished tasks.'''
         return self._parent._unfinished_tasks
 
-    def empty(self):
+    def empty(self) -> bool:
         '''Return True if the queue is empty, False otherwise (not reliable!).
 
         This method is likely to be removed at some point.  Use qsize() == 0
@@ -244,7 +248,7 @@ class _SyncQueueProxy:
         '''
         return not self._parent._qsize()
 
-    def full(self):
+    def full(self) -> bool:
         '''Return True if the queue is full, False otherwise (not reliable!).
 
         This method is likely to be removed at some point.  Use qsize() >= n
@@ -254,7 +258,8 @@ class _SyncQueueProxy:
         '''
         return 0 < self._parent._maxsize <= self._parent._qsize()
 
-    def put(self, item, block=True, timeout=None):
+    def put(self, item: T, block: bool = True,
+            timeout: OptInt = None) -> None:
         '''Put an item into the queue.
 
         If optional args 'block' is true and 'timeout' is None (the default),
@@ -288,7 +293,7 @@ class _SyncQueueProxy:
             self._parent._sync_not_empty.notify()
             self._parent._notify_async_not_empty(threadsafe=True)
 
-    def get(self, block=True, timeout=None):
+    def get(self, block: bool = True, timeout: OptInt = None) -> T:
         '''Remove and return an item from the queue.
 
         If optional args 'block' is true and 'timeout' is None (the default),
@@ -322,7 +327,7 @@ class _SyncQueueProxy:
             self._parent._notify_async_not_full(threadsafe=True)
             return item
 
-    def put_nowait(self, item):
+    def put_nowait(self, item: T) -> None:
         '''Put an item into the queue without blocking.
 
         Only enqueue the item if a free slot is immediately available.
@@ -330,7 +335,7 @@ class _SyncQueueProxy:
         '''
         return self.put(item, block=False)
 
-    def get_nowait(self):
+    def get_nowait(self) -> T:
         '''Remove and return an item from the queue without blocking.
 
         Only get an item if one is immediately available. Otherwise
@@ -339,38 +344,38 @@ class _SyncQueueProxy:
         return self.get(block=False)
 
 
-class _AsyncQueueProxy:
+class _AsyncQueueProxy(Generic[T]):
     '''Create a queue object with a given maximum size.
 
     If maxsize is <= 0, the queue size is infinite.
     '''
 
-    def __init__(self, parent):
+    def __init__(self, parent: Queue[T]):
         self._parent = parent
 
     @property
-    def closed(self):
+    def closed(self) -> bool:
         return self._parent.closed
 
-    def qsize(self):
+    def qsize(self) -> int:
         """Number of items in the queue."""
         return self._parent._qsize()
 
     @property
-    def unfinished_tasks(self):
+    def unfinished_tasks(self) -> int:
         '''Return the number of unfinished tasks.'''
         return self._parent._unfinished_tasks
 
     @property
-    def maxsize(self):
+    def maxsize(self) -> int:
         """Number of items allowed in the queue."""
         return self._parent._maxsize
 
-    def empty(self):
+    def empty(self) -> bool:
         """Return True if the queue is empty, False otherwise."""
         return self.qsize() == 0
 
-    def full(self):
+    def full(self) -> bool:
         """Return True if there are maxsize items in the queue.
 
         Note: if the Queue was initialized with maxsize=0 (the default),
@@ -381,7 +386,7 @@ class _AsyncQueueProxy:
         else:
             return self.qsize() >= self._parent._maxsize
 
-    async def put(self, item):
+    async def put(self, item: T) -> None:
         """Put an item into the queue.
 
         Put an item into the queue. If the queue is full, wait until a free
@@ -414,7 +419,7 @@ class _AsyncQueueProxy:
                 if locked:
                     self._parent._sync_mutex.release()
 
-    def put_nowait(self, item):
+    def put_nowait(self, item: T) -> None:
         """Put an item into the queue without blocking.
 
         If no free slot is immediately available, raise QueueFull.
@@ -429,7 +434,7 @@ class _AsyncQueueProxy:
             self._parent._notify_async_not_empty(threadsafe=False)
             self._parent._notify_sync_not_empty()
 
-    async def get(self):
+    async def get(self) -> T:
         """Remove and return an item from the queue.
 
         If queue is empty, wait until an item is available.
@@ -460,7 +465,7 @@ class _AsyncQueueProxy:
                 if locked:
                     self._parent._sync_mutex.release()
 
-    def get_nowait(self):
+    def get_nowait(self) -> T:
         """Remove and return an item from the queue.
 
         Return an item if one is immediately available, else raise QueueEmpty.
@@ -475,7 +480,7 @@ class _AsyncQueueProxy:
             self._parent._notify_sync_not_full()
             return item
 
-    def task_done(self):
+    def task_done(self) -> None:
         """Indicate that a formerly enqueued task is complete.
 
         Used by queue consumers. For each get() used to fetch a task,
@@ -498,7 +503,7 @@ class _AsyncQueueProxy:
                 self._parent._finished.set()
                 self._parent._all_tasks_done.notify_all()
 
-    async def join(self):
+    async def join(self) -> None:
         """Block until all items in the queue have been gotten and processed.
 
         The count of unfinished tasks goes up whenever an item is added to the
@@ -513,7 +518,7 @@ class _AsyncQueueProxy:
             await self._parent._finished.wait()
 
 
-class PriorityQueue(Queue):
+class PriorityQueue(Queue[T]):
     '''Variant of Queue that retrieves open entries in priority order
     (lowest first).
 
@@ -521,30 +526,27 @@ class PriorityQueue(Queue):
 
     '''
 
-    def _init(self, maxsize):
-        self._queue = []
+    def _init(self, maxsize: int) -> None:
+        self._heap_queue = []  # type: List[T]
 
-    def _qsize(self):
-        return len(self._queue)
+    def _qsize(self) -> int:
+        return len(self._heap_queue)
 
-    def _put(self, item):
-        heappush(self._queue, item)
+    def _put(self, item: T) -> None:
+        heappush(self._heap_queue, item)
 
-    def _get(self):
-        return heappop(self._queue)
+    def _get(self) -> T:
+        return heappop(self._heap_queue)
 
 
-class LifoQueue(Queue):
+class LifoQueue(Queue[T]):
     '''Variant of Queue that retrieves most recently added entries first.'''
 
-    def _init(self, maxsize):
-        self._queue = deque()
-
-    def _qsize(self):
+    def _qsize(self) -> int:
         return len(self._queue)
 
-    def _put(self, item):
+    def _put(self, item: T) -> None:
         self._queue.append(item)
 
-    def _get(self):
+    def _get(self) -> T:
         return self._queue.pop()

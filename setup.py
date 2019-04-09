@@ -79,4 +79,6 @@ setup(
     tests_require=tests_require,
     cmdclass={'test': PyTest},
     include_package_data=True,
+    zip_safe=True,
+    keywords=['janus', 'queue', 'asyncio'],
     extras_require=extras_require)

@@ -172,7 +172,7 @@ class QueueGetTests(_QueueTestBase):
         fut = self.loop.create_future()
 
         async def put():
-            t = janus.ensure_future(q.put(2), loop=self.loop)
+            t = asyncio.ensure_future(q.put(2), loop=self.loop)
             await asyncio.sleep(0.01)
             fut.set_result(None)
             return t
