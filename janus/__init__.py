@@ -12,6 +12,7 @@ from typing import (Generic, TypeVar, Optional, Any, Deque, List, Set,
 
 
 __version__ = '0.4.0'
+__all__ = ('Queue', 'PriorityQueue', 'LifoQueue')
 
 
 T = TypeVar('T')
