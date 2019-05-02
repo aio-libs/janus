@@ -1,11 +1,13 @@
 -e .
-ipython==7.5.0
-ipdb==0.12
+bandit==1.5.1
 coverage==4.5.3
+docutils==0.14
 flake8==3.7.7
-pytest==4.4.1
+ipdb==0.12
+ipython==7.5.0
+mypy==0.700
+pyroma==2.4
 pytest-cov==2.6.1
-mypy-lang==0.5.0
+pytest==4.4.1
 tox==3.9.0
 wheel==0.33.1
-docutils==0.14
