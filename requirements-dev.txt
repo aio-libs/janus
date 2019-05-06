@@ -7,7 +7,7 @@ ipdb==0.12
 ipython==7.5.0
 mypy==0.701
 pyroma==2.4
-pytest-cov==2.6.1
+pytest-cov==2.7.1
 pytest==4.4.1
 tox==3.9.0
 wheel==0.33.1
