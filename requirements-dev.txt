@@ -9,5 +9,5 @@ mypy==0.711
 pyroma==2.5
 pytest-cov==2.7.1
 pytest==4.6.3
-tox==3.12.1
+tox==3.13.1
 wheel==0.33.4
