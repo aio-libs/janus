@@ -4,7 +4,7 @@ coverage==4.5.3
 docutils==0.14
 flake8==3.7.7
 ipdb==0.12
-ipython==7.5.0
+ipython==7.6.0
 mypy==0.711
 pyroma==2.5
 pytest-cov==2.7.1
