@@ -6,7 +6,7 @@ flake8==3.7.9
 ipdb==0.12.2
 ipython==7.9.0
 mypy==0.740
-pyroma==2.5
+pyroma==2.6
 pytest-cov==2.8.1
 pytest==5.2.2
 tox==3.14.0
