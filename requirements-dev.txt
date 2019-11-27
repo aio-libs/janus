@@ -8,6 +8,6 @@ ipython==7.9.0
 mypy==0.740
 pyroma==2.6
 pytest-cov==2.8.1
-pytest==5.3.0
+pytest==5.3.1
 tox==3.14.1
 wheel==0.33.6
