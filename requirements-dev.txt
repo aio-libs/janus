@@ -5,7 +5,7 @@ docutils==0.15.2
 flake8==3.7.9
 ipdb==0.12.2
 ipython==7.9.0
-mypy==0.740
+mypy==0.750
 pyroma==2.6
 pytest-cov==2.8.1
 pytest==5.3.1
