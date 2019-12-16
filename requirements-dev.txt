@@ -1,6 +1,6 @@
 -e .
 bandit==1.6.2
-coverage==4.5.4
+coverage==5.0
 docutils==0.15.2
 flake8==3.7.9
 ipdb==0.12.3
