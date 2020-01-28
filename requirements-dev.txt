@@ -8,4 +8,4 @@ pyroma==2.6
 pytest-cov==2.8.1
 pytest==5.3.4
 tox==3.14.3
-wheel==0.33.6
+wheel==0.34.1
