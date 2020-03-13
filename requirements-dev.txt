@@ -6,6 +6,6 @@ flake8==3.7.9
 mypy==0.770
 pyroma==2.6
 pytest-cov==2.8.1
-pytest==5.3.5
+pytest==5.4.0
 tox==3.14.5
 wheel==0.34.2
