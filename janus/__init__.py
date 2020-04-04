@@ -19,7 +19,7 @@ T = TypeVar('T')
 OptInt = Optional[int]
 
 
-if getattr(asyncio, 'get_running_loop'):
+if hasattr(asyncio, 'get_running_loop'):
     current_loop = asyncio.get_running_loop
 else:
     current_loop = asyncio.get_event_loop
