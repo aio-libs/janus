@@ -49,7 +49,10 @@ if PY_33:
 # if not PY_35:
 #     install_requires.append('typing')
 
-tests_require = install_requires + ['pytest']
+tests_require = install_requires + [
+    'pytest>=5.4',
+    'pytest-asyncio>=0.10.0',
+]
 extras_require = {}
 
 
@@ -66,6 +69,7 @@ setup(
         'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.8',
         'Topic :: Software Development :: Libraries',
         'Framework :: AsyncIO',
     ],

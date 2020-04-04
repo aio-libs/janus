@@ -16,16 +16,18 @@ __all__ = ('Queue', 'PriorityQueue', 'LifoQueue')
 
 
 T = TypeVar('T')
-OptLoop = Optional[asyncio.AbstractEventLoop]
 OptInt = Optional[int]
 
 
-class Queue(Generic[T]):
-    def __init__(self, maxsize: int = 0, *, loop: OptLoop = None) -> None:
-        if loop is None:
-            loop = asyncio.get_event_loop()
+if getattr(asyncio, 'get_running_loop'):
+    current_loop = asyncio.get_running_loop
+else:
+    current_loop = asyncio.get_event_loop
 
-        self._loop = loop  # type: asyncio.AbstractEventLoop
+
+class Queue(Generic[T]):
+    def __init__(self, maxsize: int = 0) -> None:
+        self._loop = current_loop()
         self._maxsize = maxsize
 
         self._init(maxsize)
@@ -37,12 +39,10 @@ class Queue(Generic[T]):
         self._sync_not_full = threading.Condition(self._sync_mutex)
         self._all_tasks_done = threading.Condition(self._sync_mutex)
 
-        self._async_mutex = asyncio.Lock(loop=self._loop)
-        self._async_not_empty = asyncio.Condition(
-            self._async_mutex, loop=self._loop)
-        self._async_not_full = asyncio.Condition(
-            self._async_mutex, loop=self._loop)
-        self._finished = asyncio.Event(loop=self._loop)
+        self._async_mutex = asyncio.Lock()
+        self._async_not_empty = asyncio.Condition(self._async_mutex)
+        self._async_not_full = asyncio.Condition(self._async_mutex)
+        self._finished = asyncio.Event()
         self._finished.set()
 
         self._closing = False
@@ -78,9 +78,14 @@ class Queue(Generic[T]):
         # so lock acquiring is not required
         if not self._closing:
             raise RuntimeError("Waiting for non-closed queue")
+        # give execution chances for the task-done callbacks
+        # of async tasks created inside
+        # _notify_async_not_empty, _notify_async_not_full
+        # methods.
+        await asyncio.sleep(0)
         if not self._pending:
             return
-        await asyncio.wait(self._pending, loop=self._loop)
+        await asyncio.wait(self._pending)
 
     @property
     def closed(self) -> bool:
@@ -143,7 +148,7 @@ class Queue(Generic[T]):
                 self._async_not_empty.notify()
 
         def task_maker() -> None:
-            task = asyncio.ensure_future(f(), loop=self._loop)
+            task = self._loop.create_task(f())
             task.add_done_callback(self._pending.discard)
             self._pending.add(task)
 
@@ -158,7 +163,7 @@ class Queue(Generic[T]):
                 self._async_not_full.notify()
 
         def task_maker() -> None:
-            task = asyncio.ensure_future(f(), loop=self._loop)
+            task = self._loop.create_task(f())
             task.add_done_callback(self._pending.discard)
             self._pending.add(task)
 

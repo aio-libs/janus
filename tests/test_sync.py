@@ -1,7 +1,5 @@
 # Some simple queue module tests, plus some failure conditions
 # to ensure the Queue locks remain stable.
-import asyncio
-import concurrent.futures
 import queue
 import time
 import unittest
@@ -10,6 +8,7 @@ from unittest.mock import patch
 import threading
 
 import janus
+import pytest
 
 QUEUE_SIZE = 5
 
@@ -52,16 +51,6 @@ class _TriggerThread(threading.Thread):
 
 
 class BlockingTestMixin:
-    def setUp(self):
-        asyncio.set_event_loop(None)
-        self.loop = asyncio.new_event_loop()
-        self.executor = concurrent.futures.ThreadPoolExecutor(max_workers=5)
-        self.loop.set_default_executor(self.executor)
-
-    def tearDown(self):
-        self.t = None
-        self.executor.shutdown()
-        self.loop.close()
 
     def do_blocking_test(self, block_func, block_args, trigger_func,
                          trigger_args):
@@ -102,6 +91,7 @@ class BlockingTestMixin:
 
 
 class BaseQueueTestMixin(BlockingTestMixin):
+
     def setUp(self):
         self.cum = 0
         self.cumlock = threading.Lock()
@@ -187,20 +177,26 @@ class BaseQueueTestMixin(BlockingTestMixin):
             q.put(-1)  # instruct the threads to close
         q.join()  # verify that you can join twice
 
-    def test_queue_task_done(self):
+    @pytest.mark.asyncio
+    async def test_queue_task_done(self):
         # Test to make sure a queue task completed successfully.
-        q = self.type2test(loop=self.loop).sync_q
+        _q = self.type2test()
+        q = _q.sync_q
         try:
             q.task_done()
         except ValueError:
             pass
         else:
             self.fail("Did not detect task count going negative")
+        _q.close()
+        await _q.wait_closed()
 
-    def test_queue_join(self):
+    @pytest.mark.asyncio
+    async def test_queue_join(self):
         # Test that a queue join()s successfully, and before anything else
         # (done twice for insurance).
-        q = self.type2test(loop=self.loop).sync_q
+        _q = self.type2test()
+        q = _q.sync_q
         self.queue_join_test(q)
         self.queue_join_test(q)
         try:
@@ -209,23 +205,35 @@ class BaseQueueTestMixin(BlockingTestMixin):
             pass
         else:
             self.fail("Did not detect task count going negative")
+        finally:
+            _q.close()
+            await _q.wait_closed()
 
-    def test_simple_queue(self):
+    @pytest.mark.asyncio
+    async def test_simple_queue(self):
         # Do it a couple of times on the same queue.
         # Done twice to make sure works with same instance reused.
-        q = self.type2test(QUEUE_SIZE, loop=self.loop)
-        self.simple_queue_test(q)
-        self.simple_queue_test(q)
+        _q = self.type2test(QUEUE_SIZE)
+        self.simple_queue_test(_q)
+        self.simple_queue_test(_q)
+        _q.close()
+        await _q.wait_closed()
 
-    def test_negative_timeout_raises_exception(self):
-        q = self.type2test(QUEUE_SIZE, loop=self.loop).sync_q
+    @pytest.mark.asyncio
+    async def test_negative_timeout_raises_exception(self):
+        _q = self.type2test(QUEUE_SIZE)
+        q = _q.sync_q
         with self.assertRaises(ValueError):
             q.put(1, timeout=-1)
         with self.assertRaises(ValueError):
             q.get(1, timeout=-1)
+        _q.close()
+        await _q.wait_closed()
 
-    def test_nowait(self):
-        q = self.type2test(QUEUE_SIZE, loop=self.loop).sync_q
+    @pytest.mark.asyncio
+    async def test_nowait(self):
+        _q = self.type2test(QUEUE_SIZE)
+        q = _q.sync_q
         for i in range(QUEUE_SIZE):
             q.put_nowait(1)
         with self.assertRaises(queue.Full):
@@ -235,10 +243,14 @@ class BaseQueueTestMixin(BlockingTestMixin):
             q.get_nowait()
         with self.assertRaises(queue.Empty):
             q.get_nowait()
+        _q.close()
+        await _q.wait_closed()
 
-    def test_shrinking_queue(self):
+    @pytest.mark.asyncio
+    async def test_shrinking_queue(self):
         # issue 10110
-        q = self.type2test(3, loop=self.loop).sync_q
+        _q = self.type2test(3)
+        q = _q.sync_q
         q.put(1)
         q.put(2)
         q.put(3)
@@ -248,11 +260,17 @@ class BaseQueueTestMixin(BlockingTestMixin):
         q._maxsize = 2  # shrink the queue
         with self.assertRaises(queue.Full):
             q.put_nowait(4)
+        _q.close()
+        await _q.wait_closed()
 
-    def test_maxsize(self):
+    @pytest.mark.asyncio
+    async def test_maxsize(self):
         # Test to make sure a queue task completed successfully.
-        q = self.type2test(maxsize=5, loop=self.loop).sync_q
+        _q = self.type2test(5)
+        q = _q.sync_q
         self.assertEqual(q.maxsize, 5)
+        _q.close()
+        await _q.wait_closed()
 
 
 class QueueTest(BaseQueueTestMixin, unittest.TestCase):
@@ -374,20 +392,28 @@ class FailingQueueTest(BlockingTestMixin, unittest.TestCase):
         q.get()
         self.assertTrue(not q.qsize(), "Queue should be empty")
 
-    def test_failing_queue(self):
+    @pytest.mark.asyncio
+    async def test_failing_queue(self):
         # Test to make sure a queue is functioning correctly.
         # Done twice to the same instance.
-        q = FailingQueue(QUEUE_SIZE, loop=self.loop)
+        q = FailingQueue(QUEUE_SIZE)
         self.failing_queue_test(q)
         self.failing_queue_test(q)
+        q.close()
+        await q.wait_closed()
 
-    def test_closed_loop_non_failing(self):
-        q = janus.Queue(QUEUE_SIZE, loop=self.loop).sync_q
+    @pytest.mark.asyncio
+    async def test_closed_loop_non_failing(self):
+        loop = janus.current_loop()
+        _q = janus.Queue(QUEUE_SIZE)
+        q = _q.sync_q
         # we are pacthing loop to follow setUp/tearDown agreement
-        with patch.object(self.loop, 'call_soon_threadsafe') as func:
+        with patch.object(loop, 'call_soon_threadsafe') as func:
             func.side_effect = RuntimeError()
             q.put_nowait(1)
             self.assertEqual(func.call_count, 1)
+        _q.close()
+        await _q.wait_closed()
 
 
 if __name__ == "__main__":
