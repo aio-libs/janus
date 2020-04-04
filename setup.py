@@ -6,9 +6,6 @@ import sys
 
 from setuptools.command.test import test as TestCommand
 
-PY_33 = sys.version_info < (3, 4)
-PY_35 = sys.version_info >= (3, 5)
-
 
 class PyTest(TestCommand):
     user_options = [('pytest-args=', 'a', "Arguments to pass to py.test")]
@@ -42,12 +39,6 @@ def read(f):
 
 
 install_requires = []
-
-if PY_33:
-    install_requires.append('asyncio')
-
-# if not PY_35:
-#     install_requires.append('typing')
 
 tests_require = install_requires + [
     'pytest>=5.4',
