@@ -10,7 +10,8 @@ class TestMixedMode(unittest.TestCase):
 
     @pytest.mark.skipif(
         sys.version_info < (3, 7),
-        reason="forbidding implicit loop creation works on Python 3.7 or higher only",
+        reason="forbidding implicit loop creation works on "
+               "Python 3.7 or higher only",
     )
     def test_ctor_noloop(self):
         with self.assertRaises(RuntimeError):
