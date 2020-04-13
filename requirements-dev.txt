@@ -1,6 +1,6 @@
 -e .
 bandit==1.6.2
-coverage==5.0.4
+coverage==5.1
 docutils==0.16
 flake8==3.7.9
 mypy==0.770
