@@ -1,6 +1,11 @@
 Changes
 =======
 
+to be released
+--------------
+
+- Remove explicit loop arguments and forbid creating queues outside event loops #246
+
 0.4.0 (2018-07-28)
 ------------------
 
