@@ -11,7 +11,7 @@ from typing import (Generic, TypeVar, Optional, Any, Deque, List, Set,
                     Callable)
 
 
-__version__ = '0.4.0'
+__version__ = '0.5.0'
 __all__ = ('Queue', 'PriorityQueue', 'LifoQueue')
 
 

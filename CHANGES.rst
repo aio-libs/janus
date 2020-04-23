@@ -1,8 +1,8 @@
 Changes
 =======
 
-to be released
---------------
+0.5.0 (2020-04-23)
+------------------
 
 - Remove explicit loop arguments and forbid creating queues outside event loops #246
 
