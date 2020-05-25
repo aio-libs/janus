@@ -2,7 +2,7 @@
 bandit==1.6.2
 coverage==5.1
 docutils==0.16
-flake8==3.8.1
+flake8==3.8.2
 mypy==0.770
 pyroma==2.6
 pytest-cov==2.8.1
