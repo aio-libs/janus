@@ -138,8 +138,8 @@ class Queue(Generic[T]):
                 self._sync_not_full.notify()
 
         fut = self._loop.run_in_executor(None, f)
-        fut.add_done_callback(self._pending.discard)  # type: ignore
-        self._pending.add(fut)  # type: ignore
+        fut.add_done_callback(self._pending.discard)
+        self._pending.add(fut)
 
     def _notify_async_not_empty(self, *, threadsafe: bool) -> None:
         async def f() -> None:
