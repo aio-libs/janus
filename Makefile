@@ -1,21 +1,21 @@
 develop:
 	python setup.py develop
 
-flake: checkrst  pyroma bandit mypy
+lint flake: checkrst  pyroma bandit mypy
 	flake8 janus tests
 
 test: flake develop
-	py.test tests
+	pytest tests
 
 vtest: flake develop
-	py.test -v tests
+	pytest -v tests
 
 fmt:
 	isort -rc janus tests setup.py
 	black janus tests setup.py
 
 cov: flake develop
-	py.test --cov=janus --cov=tests --cov-report=term --cov-report=html
+	pytest --cov=janus --cov=tests --cov-report=term --cov-report=html
 	@echo "open file://`pwd`/htmlcov/index.html"
 
 checkrst:
