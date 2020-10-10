@@ -1,7 +1,7 @@
 develop:
 	python setup.py develop
 
-flake: checkrst  pyroma bandit
+flake: checkrst  pyroma bandit mypy
 	flake8 janus tests
 
 test: flake develop
@@ -10,8 +10,9 @@ test: flake develop
 vtest: flake develop
 	py.test -v tests
 
-yapf:
-	yapf -ri janus tests setup.py
+fmt:
+	isort -rc janus tests setup.py
+	black janus tests setup.py
 
 cov: flake develop
 	py.test --cov=janus --cov=tests --cov-report=term --cov-report=html

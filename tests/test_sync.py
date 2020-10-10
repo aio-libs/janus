@@ -1,13 +1,13 @@
 # Some simple queue module tests, plus some failure conditions
 # to ensure the Queue locks remain stable.
 import queue
+import threading
 import time
 from unittest.mock import patch
 
-import threading
+import pytest
 
 import janus
-import pytest
 
 QUEUE_SIZE = 5
 
@@ -37,6 +37,7 @@ class _TriggerThread(threading.Thread):
         self.startedEvent.set()
         self.fn(*self.args)
 
+
 # Execute a function that blocks, and in a separate thread, a function that
 # triggers the release.  Returns the result of the blocking function.  Caution:
 # block_func must guarantee to block until trigger_func is called, and
@@ -50,26 +51,27 @@ class _TriggerThread(threading.Thread):
 
 
 class BlockingTestMixin:
-
-    def do_blocking_test(self, block_func, block_args, trigger_func,
-                         trigger_args):
+    def do_blocking_test(self, block_func, block_args, trigger_func, trigger_args):
         self.t = _TriggerThread(trigger_func, trigger_args)
         self.t.start()
         self.result = block_func(*block_args)
         # If block_func returned before our thread made the call, we failed!
         if not self.t.startedEvent.is_set():
-            pytest.fail("blocking function '%r' appeared not to block" %
-                        block_func)
+            pytest.fail("blocking function '%r' appeared not to block" % block_func)
         self.t.join(10)  # make sure the thread terminates
         if self.t.is_alive():
-            pytest.fail("trigger function '%r' appeared to not return" %
-                        trigger_func)
+            pytest.fail("trigger function '%r' appeared to not return" % trigger_func)
         return self.result
 
     # Call this instead if block_func is supposed to raise an exception.
-    def do_exceptional_blocking_test(self, block_func, block_args,
-                                     trigger_func, trigger_args,
-                                     expected_exception_class):
+    def do_exceptional_blocking_test(
+        self,
+        block_func,
+        block_args,
+        trigger_func,
+        trigger_args,
+        expected_exception_class,
+    ):
         self.t = _TriggerThread(trigger_func, trigger_args)
         self.t.start()
         try:
@@ -78,13 +80,13 @@ class BlockingTestMixin:
             except expected_exception_class:
                 raise
             else:
-                pytest.fail("expected exception of kind %r" %
-                            expected_exception_class)
+                pytest.fail("expected exception of kind %r" % expected_exception_class)
         finally:
             self.t.join(10)  # make sure the thread terminates
             if self.t.is_alive():
-                pytest.fail("trigger function '%r' appeared to not return" %
-                            trigger_func)
+                pytest.fail(
+                    "trigger function '%r' appeared to not return" % trigger_func
+                )
             if not self.t.startedEvent.is_set():
                 pytest.fail("trigger thread ended but event never set")
 
@@ -104,9 +106,11 @@ class BaseQueueTestMixin(BlockingTestMixin):
         q.put(111)
         q.put(333)
         q.put(222)
-        target_order = dict(Queue=[111, 333, 222],
-                            LifoQueue=[222, 333, 111],
-                            PriorityQueue=[111, 222, 333])
+        target_order = dict(
+            Queue=[111, 333, 222],
+            LifoQueue=[222, 333, 111],
+            PriorityQueue=[111, 222, 333],
+        )
         actual_order = [q.get(), q.get(), q.get()]
         assert actual_order == target_order[_q.__class__.__name__]
         for i in range(QUEUE_SIZE - 1):
@@ -130,7 +134,7 @@ class BaseQueueTestMixin(BlockingTestMixin):
         except queue.Full:
             pass
         # Test a blocking put
-        self.do_blocking_test(q.put, (full, ), q.get, ())
+        self.do_blocking_test(q.put, (full,), q.get, ())
         self.do_blocking_test(q.put, (full, True, 10), q.get, ())
         # Empty it
         for i in range(QUEUE_SIZE):
@@ -147,8 +151,8 @@ class BaseQueueTestMixin(BlockingTestMixin):
         except queue.Empty:
             pass
         # Test a blocking get
-        self.do_blocking_test(q.get, (), q.put, ('empty', ))
-        self.do_blocking_test(q.get, (True, 10), q.put, ('empty', ))
+        self.do_blocking_test(q.get, (), q.put, ("empty",))
+        self.do_blocking_test(q.get, (True, 10), q.put, ("empty",))
 
     def worker(self, q):
         try:
@@ -162,12 +166,13 @@ class BaseQueueTestMixin(BlockingTestMixin):
                 q.task_done()
         except Exception as ex:
             from traceback import print_exc
+
             print_exc(ex)
 
     def queue_join_test(self, q):
         self.cum = 0
         for i in (0, 1):
-            threading.Thread(target=self.worker, args=(q, )).start()
+            threading.Thread(target=self.worker, args=(q,)).start()
         for i in range(100):
             q.put(i)
         q.join()
@@ -333,7 +338,7 @@ class TestFailingQueue(BlockingTestMixin):
         # Test a failing blocking put
         _q.fail_next_put = True
         try:
-            self.do_blocking_test(q.put, ("full", ), q.get, ())
+            self.do_blocking_test(q.put, ("full",), q.get, ())
             pytest.fail("The queue didn't fail when it should have")
         except FailingQueueException:
             pass
@@ -343,8 +348,9 @@ class TestFailingQueue(BlockingTestMixin):
         # Test a failing timeout put
         _q.fail_next_put = True
         try:
-            self.do_exceptional_blocking_test(q.put, ("full", True, 10),
-                                              q.get, (), FailingQueueException)
+            self.do_exceptional_blocking_test(
+                q.put, ("full", True, 10), q.get, (), FailingQueueException
+            )
             pytest.fail("The queue didn't fail when it should have")
         except FailingQueueException:
             pass
@@ -357,7 +363,7 @@ class TestFailingQueue(BlockingTestMixin):
         q.put("last")
         assert qfull(q)
         # Test a blocking put
-        self.do_blocking_test(q.put, ("full", ), q.get, ())
+        self.do_blocking_test(q.put, ("full",), q.get, ())
         # Empty it
         for i in range(QUEUE_SIZE):
             q.get()
@@ -381,8 +387,9 @@ class TestFailingQueue(BlockingTestMixin):
         assert not q.qsize()
         _q.fail_next_get = True
         try:
-            self.do_exceptional_blocking_test(q.get, (), q.put, ('empty', ),
-                                              FailingQueueException)
+            self.do_exceptional_blocking_test(
+                q.get, (), q.put, ("empty",), FailingQueueException
+            )
             pytest.fail("The queue didn't fail when it should have")
         except FailingQueueException:
             pass
@@ -407,7 +414,7 @@ class TestFailingQueue(BlockingTestMixin):
         _q = janus.Queue(QUEUE_SIZE)
         q = _q.sync_q
         # we are pacthing loop to follow setUp/tearDown agreement
-        with patch.object(loop, 'call_soon_threadsafe') as func:
+        with patch.object(loop, "call_soon_threadsafe") as func:
             func.side_effect = RuntimeError()
             q.put_nowait(1)
             assert func.call_count == 1

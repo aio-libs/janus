@@ -2,12 +2,12 @@
 
 import asyncio
 
-import janus
 import pytest
+
+import janus
 
 
 class TestQueueBasic:
-
     async def _test_repr_or_str(self, fn, expect_id):
         """Test Queue's repr or str.
 
@@ -17,7 +17,7 @@ class TestQueueBasic:
 
         _q = janus.Queue()
         q = _q.async_q
-        assert fn(q).startswith('<Queue')
+        assert fn(q).startswith("<Queue")
         id_is_present = hex(id(q)) in fn(q)
         assert expect_id == id_is_present
         loop = janus.current_loop()
@@ -29,7 +29,7 @@ class TestQueueBasic:
             loop.create_task(q.get())
             # Let it start waiting.
             await asyncio.sleep(0.1)
-            assert '_getters[1]' in fn(q)
+            assert "_getters[1]" in fn(q)
             # resume q.get coroutine to finish generator
             q.put_nowait(0)
 
@@ -43,7 +43,7 @@ class TestQueueBasic:
             loop.create_task(q.put(2))
             # Let it start waiting.
             await asyncio.sleep(0.1)
-            assert '_putters[1]' in fn(q)
+            assert "_putters[1]" in fn(q)
             # resume q.put coroutine to finish generator
             q.get_nowait()
 
@@ -52,7 +52,7 @@ class TestQueueBasic:
         _q = janus.Queue()
         q = _q.async_q
         q.put_nowait(1)
-        assert '_queue=[1]' in fn(q)
+        assert "_queue=[1]" in fn(q)
 
     # def test_repr(self):
     #     self._test_repr_or_str(repr, True)
@@ -143,7 +143,6 @@ class TestQueueBasic:
 
 
 class TestQueueGetTests:
-
     @pytest.mark.asyncio
     async def test_blocking_get(self):
         _q = janus.Queue()
@@ -277,10 +276,10 @@ class TestQueueGetTests:
         with pytest.raises(asyncio.CancelledError):
             await t1
         assert t1.done()
-        q.put_nowait('a')
+        q.put_nowait("a")
 
         await t2
-        assert t2.result() == 'a'
+        assert t2.result() == "a"
 
         assert not _q._sync_mutex.locked()
         _q.close()
@@ -292,13 +291,13 @@ class TestQueueGetTests:
         _q = janus.Queue(maxsize=1)
         q = _q.async_q
 
-        loop.create_task(q.put('a'))
-        loop.create_task(q.put('b'))
+        loop.create_task(q.put("a"))
+        loop.create_task(q.put("b"))
 
         await asyncio.sleep(0.01)
 
-        assert await q.get() == 'a'
-        assert await q.get() == 'b'
+        assert await q.get() == "a"
+        assert await q.get() == "b"
 
         assert not _q._sync_mutex.locked()
         _q.close()
@@ -306,7 +305,6 @@ class TestQueueGetTests:
 
 
 class TestQueuePut:
-
     @pytest.mark.asyncio
     async def test_blocking_put(self):
         _q = janus.Queue()
@@ -407,7 +405,7 @@ class TestQueuePut:
             return True
 
         async def test():
-            return (await q.get())
+            return await q.get()
 
         t = loop.create_task(queue_put())
         assert 1 == await test()
@@ -424,9 +422,9 @@ class TestQueuePut:
         _q = janus.Queue(maxsize=1)
         q = _q.async_q
 
-        put_a = loop.create_task(q.put('a'))
-        put_b = loop.create_task(q.put('b'))
-        put_c = loop.create_task(q.put('X'))
+        put_a = loop.create_task(q.put("a"))
+        put_b = loop.create_task(q.put("b"))
+        put_c = loop.create_task(q.put("X"))
 
         await put_a
         assert not put_b.done()
@@ -438,9 +436,9 @@ class TestQueuePut:
 
         async def go():
             a = await q.get()
-            assert a == 'a'
+            assert a == "a"
             b = await q.get()
-            assert b == 'b'
+            assert b == "b"
             assert put_b.done()
 
         await go()
@@ -460,14 +458,14 @@ class TestQueuePut:
             return ret
 
         async def put():
-            await q.put('a')
+            await q.put("a")
 
         _q = janus.Queue()
         q = _q.async_q
         t = loop.create_task(go())
         await fut
         await put()
-        assert await t == 'a'
+        assert await t == "a"
 
         assert not _q._sync_mutex.locked()
         _q.close()
@@ -543,8 +541,7 @@ class _QueueJoinTestMixin:
                 q.task_done()
 
         async def test():
-            tasks = [loop.create_task(worker())
-                     for index in range(2)]
+            tasks = [loop.create_task(worker()) for index in range(2)]
 
             await q.join()
             return tasks
