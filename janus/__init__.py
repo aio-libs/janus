@@ -69,6 +69,8 @@ class Queue(Generic[T]):
             self._closing = True
             for fut in self._pending:
                 fut.cancel()
+            self._finished.set()  # unblocks all async_q.join()
+            self._all_tasks_done.notify_all()  # unblocks all sync_q.join()
 
     async def wait_closed(self) -> None:
         # should be called from loop after close().
@@ -172,7 +174,7 @@ class Queue(Generic[T]):
 
     def _check_closing(self) -> None:
         if self._closing:
-            raise RuntimeError("Modification of closed queue is forbidden")
+            raise RuntimeError("Operation of closed queue is forbidden")
 
 
 class _SyncQueueProxy(Generic[T]):
@@ -225,9 +227,11 @@ class _SyncQueueProxy(Generic[T]):
 
         When the count of unfinished tasks drops to zero, join() unblocks.
         """
+        self._parent._check_closing()
         with self._parent._all_tasks_done:
             while self._parent._unfinished_tasks:
                 self._parent._all_tasks_done.wait()
+                self._parent._check_closing()
 
     def qsize(self) -> int:
         """Return the approximate size of the queue (not reliable!)."""
@@ -513,6 +517,7 @@ class _AsyncQueueProxy(Generic[T]):
         """
         while True:
             with self._parent._sync_mutex:
+                self._parent._check_closing()
                 if self._parent._unfinished_tasks == 0:
                     break
             await self._parent._finished.wait()
