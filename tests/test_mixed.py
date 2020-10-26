@@ -1,5 +1,7 @@
 import asyncio
+import contextlib
 import sys
+import threading
 
 import pytest
 
@@ -231,3 +233,75 @@ class TestMixedMode:
         assert q.closed
         assert q.async_q.closed
         assert q.sync_q.closed
+
+    @pytest.mark.asyncio
+    async def test_async_join_after_closing(self):
+        q = janus.Queue()
+        q.close()
+        with pytest.raises(RuntimeError), contextlib.suppress(asyncio.TimeoutError):
+            await asyncio.wait_for(q.async_q.join(), timeout=0.1)
+
+        await q.wait_closed()
+
+    @pytest.mark.asyncio
+    async def test_close_after_async_join(self):
+        q = janus.Queue()
+        q.sync_q.put(1)
+
+        task = asyncio.ensure_future(q.async_q.join())
+        await asyncio.sleep(0.1)  # ensure tasks are blocking
+
+        q.close()
+        with pytest.raises(RuntimeError), contextlib.suppress(asyncio.TimeoutError):
+            await asyncio.wait_for(task, timeout=0.1)
+
+        await q.wait_closed()
+
+    @pytest.mark.asyncio
+    async def test_sync_join_after_closing(self):
+        q = janus.Queue()
+        q.sync_q.put(1)
+
+        q.close()
+
+        loop = asyncio.get_event_loop()
+        fut = asyncio.Future()
+
+        def sync_join():
+            try:
+                q.sync_q.join()
+            except Exception as exc:
+                loop.call_soon_threadsafe(fut.set_exception, exc)
+
+        thr = threading.Thread(target=sync_join, daemon=True)
+        thr.start()
+
+        with pytest.raises(RuntimeError), contextlib.suppress(asyncio.TimeoutError):
+            await asyncio.wait_for(fut, timeout=0.1)
+
+        await q.wait_closed()
+
+    @pytest.mark.asyncio
+    async def test_close_after_sync_join(self):
+        q = janus.Queue()
+        q.sync_q.put(1)
+
+        loop = asyncio.get_event_loop()
+        fut = asyncio.Future()
+
+        def sync_join():
+            try:
+                q.sync_q.join()
+            except Exception as exc:
+                loop.call_soon_threadsafe(fut.set_exception, exc)
+
+        thr = threading.Thread(target=sync_join, daemon=True)
+        thr.start()
+        thr.join(0.1)  # ensure tasks are blocking
+
+        q.close()
+
+        with pytest.raises(RuntimeError), contextlib.suppress(asyncio.TimeoutError):
+            await asyncio.wait_for(fut, timeout=0.1)
+
+        await q.wait_closed()
