@@ -1,6 +1,17 @@
 Changes
 =======
 
+0.6.0 (2020-04-23)
+------------------
+
+- Raise RuntimeError on queue.join() after queue closing. #295
+
+- Drop Python 3.5, the minimal supported version is Python 3.6
+
+- Support Python 3.9
+
+- Refomat with ``black``
+
 0.5.0 (2020-04-23)
 ------------------
 
