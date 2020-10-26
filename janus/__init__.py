@@ -8,7 +8,7 @@ from queue import Empty as SyncQueueEmpty
 from queue import Full as SyncQueueFull
 from typing import Any, Callable, Deque, Generic, List, Optional, Set, TypeVar
 
-__version__ = "0.6.0"
+__version__ = "0.6.1"
 __all__ = ("Queue", "PriorityQueue", "LifoQueue")
 
 
