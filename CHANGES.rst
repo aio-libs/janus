@@ -12,6 +12,8 @@ Changes
 
 - Refomat with ``black``
 
+- Replace ``timeout`` type from ``Optional[int]`` to ``Optional[float]`` #267
+
 0.5.0 (2020-04-23)
 ------------------
 

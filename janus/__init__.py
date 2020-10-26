@@ -13,7 +13,7 @@ __all__ = ("Queue", "PriorityQueue", "LifoQueue")
 
 
 T = TypeVar("T")
-OptInt = Optional[int]
+OptFloat = Optional[float]
 
 
 current_loop = getattr(asyncio, "get_running_loop", None)
@@ -265,7 +265,7 @@ class _SyncQueueProxy(Generic[T]):
         """
         return 0 < self._parent._maxsize <= self._parent._qsize()
 
-    def put(self, item: T, block: bool = True, timeout: OptInt = None) -> None:
+    def put(self, item: T, block: bool = True, timeout: OptFloat = None) -> None:
         """Put an item into the queue.
 
         If optional args 'block' is true and 'timeout' is None (the default),
@@ -299,7 +299,7 @@ class _SyncQueueProxy(Generic[T]):
             self._parent._sync_not_empty.notify()
             self._parent._notify_async_not_empty(threadsafe=True)
 
-    def get(self, block: bool = True, timeout: OptInt = None) -> T:
+    def get(self, block: bool = True, timeout: OptFloat = None) -> T:
         """Remove and return an item from the queue.
 
         If optional args 'block' is true and 'timeout' is None (the default),
