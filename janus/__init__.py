@@ -174,7 +174,7 @@ class Queue(Generic[T]):
 
     def _check_closing(self) -> None:
         if self._closing:
-            raise RuntimeError("Operation of closed queue is forbidden")
+            raise RuntimeError("Operation on the closed queue is forbidden")
 
 
 class _SyncQueueProxy(Generic[T]):
