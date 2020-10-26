@@ -1,18 +1,21 @@
 Changes
 =======
 
-0.6.0 (2020-10-26)
+0.6.1 (2020-10-26)
 ------------------
 
 - Raise RuntimeError on queue.join() after queue closing. #295
+
+- Replace ``timeout`` type from ``Optional[int]`` to ``Optional[float]`` #267
+
+0.6.0 (2020-10-10)
+------------------
 
 - Drop Python 3.5, the minimal supported version is Python 3.6
 
 - Support Python 3.9
 
 - Refomat with ``black``
-
-- Replace ``timeout`` type from ``Optional[int]`` to ``Optional[float]`` #267
 
 0.5.0 (2020-04-23)
 ------------------
