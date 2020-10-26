@@ -1,7 +1,7 @@
 Changes
 =======
 
-0.6.0 (2020-04-23)
+0.6.0 (2020-10-26)
 ------------------
 
 - Raise RuntimeError on queue.join() after queue closing. #295
