@@ -1,6 +1,8 @@
 Changes
 =======
 
+- `Queue` now accepts `loop` argument. #297
+
 0.6.1 (2020-10-26)
 ------------------
 

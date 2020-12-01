@@ -22,8 +22,8 @@ if current_loop is None:
 
 
 class Queue(Generic[T]):
-    def __init__(self, maxsize: int = 0) -> None:
-        self._loop = current_loop()
+    def __init__(self, maxsize: int = 0, loop: Any = None) -> None:
+        self._loop = loop or current_loop()
         self._maxsize = maxsize
 
         self._init(maxsize)
