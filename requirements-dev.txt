@@ -11,4 +11,4 @@ pytest==6.1.2
 pytest-asyncio==0.14.0
 isort==5.6.4
 tox==3.20.1
-wheel==0.36.0
+wheel==0.36.1
