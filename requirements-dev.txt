@@ -4,7 +4,7 @@ bandit==1.7.0
 coverage==5.5
 docutils==0.17.1
 flake8==3.9.2
-mypy==0.901
+mypy==0.902
 pyroma==3.1
 pytest-cov==2.12.1
 pytest==6.2.4
