@@ -1,4 +1,5 @@
 import asyncio
+import sys
 import threading
 from asyncio import QueueEmpty as AsyncQueueEmpty
 from asyncio import QueueFull as AsyncQueueFull
@@ -36,6 +37,9 @@ class Queue(Generic[T]):
         self._all_tasks_done = threading.Condition(self._sync_mutex)
 
         self._async_mutex = asyncio.Lock()
+        if sys.version_info[:3] == (3, 10, 0):
+            # Workaround for Python 3.10 bug, see #358:
+            getattr(self._async_mutex, '_get_loop', lambda: None)()
         self._async_not_empty = asyncio.Condition(self._async_mutex)
         self._async_not_full = asyncio.Condition(self._async_mutex)
         self._finished = asyncio.Event()
