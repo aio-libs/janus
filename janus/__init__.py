@@ -7,7 +7,7 @@ from collections import deque
 from heapq import heappop, heappush
 from queue import Empty as SyncQueueEmpty
 from queue import Full as SyncQueueFull
-from typing import Any, Callable, Deque, Generic, List, Optional, Set, TypeVar
+from typing import Any, Callable, Deque, Generic, List, Optional, Protocol, Set, TypeVar
 
 __version__ = "0.6.2"
 __all__ = ("Queue", "PriorityQueue", "LifoQueue")
@@ -181,7 +181,49 @@ class Queue(Generic[T]):
             raise RuntimeError("Operation on the closed queue is forbidden")
 
 
-class _SyncQueueProxy(Generic[T]):
+class SyncQueue(Protocol[T]):
+
+    @property
+    def maxsize(self) -> int:
+        ...
+
+    @property
+    def closed(self) -> bool:
+        ...
+
+    def task_done(self) -> None:
+        ...
+
+    def join(self) -> None:
+        ...
+
+    def qsize(self) -> int:
+        ...
+
+    @property
+    def unfinished_tasks(self) -> int:
+        ...
+
+    def empty(self) -> bool:
+        ...
+
+    def full(self) -> bool:
+        ...
+
+    def put(self, item: T, block: bool = True, timeout: OptFloat = None) -> None:
+        ...
+
+    def get(self, block: bool = True, timeout: OptFloat = None) -> T:
+        ...
+
+    def put_nowait(self, item: T) -> None:
+        ...
+
+    def get_nowait(self) -> T:
+        ...
+
+
+class _SyncQueueProxy(SyncQueue[T]):
     """Create a queue object with a given maximum size.
 
     If maxsize is <= 0, the queue size is infinite.
@@ -354,7 +396,49 @@ class _SyncQueueProxy(Generic[T]):
         return self.get(block=False)
 
 
-class _AsyncQueueProxy(Generic[T]):
+class AsyncQueue(Protocol[T]):
+
+    @property
+    def closed(self) -> bool:
+        ...
+
+    def qsize(self) -> int:
+        ...
+
+    @property
+    def unfinished_tasks(self) -> int:
+        ...
+
+    @property
+    def maxsize(self) -> int:
+        ...
+
+    def empty(self) -> bool:
+        ...
+
+    def full(self) -> bool:
+        ...
+
+    async def put(self, item: T) -> None:
+        ...
+
+    def put_nowait(self, item: T) -> None:
+        ...
+
+    async def get(self) -> T:
+        ...
+
+    def get_nowait(self) -> T:
+        ...
+
+    def task_done(self) -> None:
+        ...
+
+    async def join(self) -> None:
+        ...
+
+
+class _AsyncQueueProxy(AsyncQueue[T]):
     """Create a queue object with a given maximum size.
 
     If maxsize is <= 0, the queue size is infinite.
