@@ -1,8 +1,8 @@
 =======
  janus
 =======
-.. image:: https://travis-ci.com/aio-libs/janus.svg?branch=master
-    :target: https://travis-ci.com/aio-libs/janus
+.. image:: https://github.com/aio-libs/janus/actions/workflows/ci.yml/badge.svg
+    :target: https://github.com/aio-libs/janus/actions/workflows/ci.yml
 .. image:: https://codecov.io/gh/aio-libs/janus/branch/master/graph/badge.svg
     :target: https://codecov.io/gh/aio-libs/janus
 .. image:: https://img.shields.io/pypi/v/janus.svg
