@@ -83,7 +83,6 @@ class SyncQueue(BaseQueue[T], Protocol[T]):
     def get_nowait(self) -> T:
         ...
 
-
     def put(self, item: T, block: bool = True, timeout: OptFloat = None) -> None:
         ...
 
@@ -94,17 +93,13 @@ class SyncQueue(BaseQueue[T], Protocol[T]):
         ...
 
 
-
 class AsyncQueue(BaseQueue[T], Protocol[T]):
-
 
     async def put(self, item: T) -> None:
         ...
 
-
     async def get(self) -> T:
         ...
-
 
     async def join(self) -> None:
         ...
@@ -113,7 +108,6 @@ class AsyncQueue(BaseQueue[T], Protocol[T]):
 current_loop = getattr(asyncio, "get_running_loop", None)
 if current_loop is None:
     current_loop = asyncio.get_event_loop
-
 
 
 class Queue(Generic[T]):
