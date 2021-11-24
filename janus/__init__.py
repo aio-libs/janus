@@ -8,10 +8,18 @@ from heapq import heappop, heappush
 from queue import Empty as SyncQueueEmpty
 from queue import Full as SyncQueueFull
 from typing import Any, Callable, Deque, Generic, List, Optional, Set, TypeVar
+
 from typing_extensions import Protocol
 
-__version__ = "0.6.2"
-__all__ = ("Queue", "PriorityQueue", "LifoQueue")
+__version__ = "0.7.0"
+__all__ = (
+    "Queue",
+    "PriorityQueue",
+    "LifoQueue",
+    "SyncQueue",
+    "AsyncQueue",
+    "BaseQueue",
+)
 
 
 T = TypeVar("T")
@@ -19,7 +27,6 @@ OptFloat = Optional[float]
 
 
 class BaseQueue(Protocol[T]):
-
     @property
     def maxsize(self) -> int:
         ...
@@ -52,7 +59,6 @@ class BaseQueue(Protocol[T]):
 
 
 class SyncQueue(BaseQueue[T], Protocol[T]):
-
     @property
     def maxsize(self) -> int:
         ...
@@ -94,7 +100,6 @@ class SyncQueue(BaseQueue[T], Protocol[T]):
 
 
 class AsyncQueue(BaseQueue[T], Protocol[T]):
-
     async def put(self, item: T) -> None:
         ...
 
@@ -127,7 +132,7 @@ class Queue(Generic[T]):
         self._async_mutex = asyncio.Lock()
         if sys.version_info[:3] == (3, 10, 0):
             # Workaround for Python 3.10 bug, see #358:
-            getattr(self._async_mutex, '_get_loop', lambda: None)()
+            getattr(self._async_mutex, "_get_loop", lambda: None)()
         self._async_not_empty = asyncio.Condition(self._async_mutex)
         self._async_not_full = asyncio.Condition(self._async_mutex)
         self._finished = asyncio.Event()

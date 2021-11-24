@@ -1,6 +1,11 @@
 Changes
 =======
 
+0.7.0 (2021-11-24)
+------------------
+
+- Add SyncQueue and AsyncQueue Protocols to provide type hints for sync and async queues #374
+
 0.6.2 (2021-10-24)
 ------------------
 
