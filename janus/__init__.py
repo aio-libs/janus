@@ -7,7 +7,8 @@ from collections import deque
 from heapq import heappop, heappush
 from queue import Empty as SyncQueueEmpty
 from queue import Full as SyncQueueFull
-from typing import Any, Callable, Deque, Generic, List, Optional, Protocol, Set, TypeVar
+from typing import Any, Callable, Deque, Generic, List, Optional, Set, TypeVar
+from typing_extensions import Protocol
 
 __version__ = "0.6.2"
 __all__ = ("Queue", "PriorityQueue", "LifoQueue")
@@ -17,9 +18,102 @@ T = TypeVar("T")
 OptFloat = Optional[float]
 
 
+class BaseQueue(Protocol[T]):
+
+    @property
+    def maxsize(self) -> int:
+        ...
+
+    @property
+    def closed(self) -> bool:
+        ...
+
+    def task_done(self) -> None:
+        ...
+
+    def qsize(self) -> int:
+        ...
+
+    @property
+    def unfinished_tasks(self) -> int:
+        ...
+
+    def empty(self) -> bool:
+        ...
+
+    def full(self) -> bool:
+        ...
+
+    def put_nowait(self, item: T) -> None:
+        ...
+
+    def get_nowait(self) -> T:
+        ...
+
+
+class SyncQueue(BaseQueue[T], Protocol[T]):
+
+    @property
+    def maxsize(self) -> int:
+        ...
+
+    @property
+    def closed(self) -> bool:
+        ...
+
+    def task_done(self) -> None:
+        ...
+
+    def qsize(self) -> int:
+        ...
+
+    @property
+    def unfinished_tasks(self) -> int:
+        ...
+
+    def empty(self) -> bool:
+        ...
+
+    def full(self) -> bool:
+        ...
+
+    def put_nowait(self, item: T) -> None:
+        ...
+
+    def get_nowait(self) -> T:
+        ...
+
+
+    def put(self, item: T, block: bool = True, timeout: OptFloat = None) -> None:
+        ...
+
+    def get(self, block: bool = True, timeout: OptFloat = None) -> T:
+        ...
+
+    def join(self) -> None:
+        ...
+
+
+
+class AsyncQueue(BaseQueue[T], Protocol[T]):
+
+
+    async def put(self, item: T) -> None:
+        ...
+
+
+    async def get(self) -> T:
+        ...
+
+
+    async def join(self) -> None:
+        ...
+
+
 current_loop = getattr(asyncio, "get_running_loop", None)
 if current_loop is None:
     current_loop = asyncio.get_event_loop
+
 
 
 class Queue(Generic[T]):
@@ -179,48 +273,6 @@ class Queue(Generic[T]):
     def _check_closing(self) -> None:
         if self._closing:
             raise RuntimeError("Operation on the closed queue is forbidden")
-
-
-class SyncQueue(Protocol[T]):
-
-    @property
-    def maxsize(self) -> int:
-        ...
-
-    @property
-    def closed(self) -> bool:
-        ...
-
-    def task_done(self) -> None:
-        ...
-
-    def join(self) -> None:
-        ...
-
-    def qsize(self) -> int:
-        ...
-
-    @property
-    def unfinished_tasks(self) -> int:
-        ...
-
-    def empty(self) -> bool:
-        ...
-
-    def full(self) -> bool:
-        ...
-
-    def put(self, item: T, block: bool = True, timeout: OptFloat = None) -> None:
-        ...
-
-    def get(self, block: bool = True, timeout: OptFloat = None) -> T:
-        ...
-
-    def put_nowait(self, item: T) -> None:
-        ...
-
-    def get_nowait(self) -> T:
-        ...
 
 
 class _SyncQueueProxy(SyncQueue[T]):
@@ -394,48 +446,6 @@ class _SyncQueueProxy(SyncQueue[T]):
         raise the Empty exception.
         """
         return self.get(block=False)
-
-
-class AsyncQueue(Protocol[T]):
-
-    @property
-    def closed(self) -> bool:
-        ...
-
-    def qsize(self) -> int:
-        ...
-
-    @property
-    def unfinished_tasks(self) -> int:
-        ...
-
-    @property
-    def maxsize(self) -> int:
-        ...
-
-    def empty(self) -> bool:
-        ...
-
-    def full(self) -> bool:
-        ...
-
-    async def put(self, item: T) -> None:
-        ...
-
-    def put_nowait(self, item: T) -> None:
-        ...
-
-    async def get(self) -> T:
-        ...
-
-    def get_nowait(self) -> T:
-        ...
-
-    def task_done(self) -> None:
-        ...
-
-    async def join(self) -> None:
-        ...
 
 
 class _AsyncQueueProxy(AsyncQueue[T]):

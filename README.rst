@@ -1,8 +1,8 @@
 =======
  janus
 =======
-.. image:: https://travis-ci.com/aio-libs/janus.svg?branch=master
-    :target: https://travis-ci.com/aio-libs/janus
+.. image:: https://github.com/aio-libs/janus/actions/workflows/ci.yml/badge.svg
+    :target: https://github.com/aio-libs/janus/actions/workflows/ci.yml
 .. image:: https://codecov.io/gh/aio-libs/janus/branch/master/graph/badge.svg
     :target: https://codecov.io/gh/aio-libs/janus
 .. image:: https://img.shields.io/pypi/v/janus.svg
@@ -35,21 +35,21 @@ Usage example (Python 3.7+)
     import janus
 
 
-    def threaded(sync_q):
+    def threaded(sync_q: janus.SyncQueue[int]) -> None:
         for i in range(100):
             sync_q.put(i)
         sync_q.join()
 
 
-    async def async_coro(async_q):
+    async def async_coro(async_q: janus.AsyncQueue[int]) -> None:
         for i in range(100):
             val = await async_q.get()
             assert val == i
             async_q.task_done()
 
 
-    async def main():
-        queue = janus.Queue()
+    async def main() -> None:
+        queue: janus.Queue[int] = janus.Queue()
         loop = asyncio.get_running_loop()
         fut = loop.run_in_executor(None, threaded, queue.sync_q)
         await async_coro(queue.async_q)
