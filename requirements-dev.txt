@@ -1,8 +1,8 @@
 -e .
-black==21.10b0
-bandit==1.7.0
-coverage==6.1.1
-docutils==0.18
+black==21.11b1
+bandit==1.7.1
+coverage==6.1.2
+docutils==0.18.1
 flake8==4.0.1
 mypy==0.910
 pyroma==3.2
