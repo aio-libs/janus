@@ -102,7 +102,7 @@ Usage example (Python 3.5 and 3.6)
 Communication channels
 ======================
 
-*aio-libs* google group: https://groups.google.com/forum/#!forum/aio-libs
+GitHub Discussions: https://github.com/aio-libs/janus/discussions
 
 Feel free to post your questions and ideas here.
 
