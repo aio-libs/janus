@@ -1,5 +1,6 @@
 # Some simple queue module tests, plus some failure conditions
 # to ensure the Queue locks remain stable.
+import asyncio
 import queue
 import threading
 import time
@@ -410,7 +411,7 @@ class TestFailingQueue(BlockingTestMixin):
 
     @pytest.mark.asyncio
     async def test_closed_loop_non_failing(self):
-        loop = janus.current_loop()
+        loop = asyncio.get_running_loop()
         _q = janus.Queue(QUEUE_SIZE)
         q = _q.sync_q
         # we are pacthing loop to follow setUp/tearDown agreement

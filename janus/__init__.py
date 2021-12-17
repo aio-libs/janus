@@ -11,7 +11,7 @@ from typing import Any, Callable, Deque, Generic, List, Optional, Set, TypeVar
 
 from typing_extensions import Protocol
 
-__version__ = "0.7.0"
+__version__ = "1.0.0"
 __all__ = (
     "Queue",
     "PriorityQueue",
@@ -110,14 +110,9 @@ class AsyncQueue(BaseQueue[T], Protocol[T]):
         ...
 
 
-current_loop = getattr(asyncio, "get_running_loop", None)
-if current_loop is None:
-    current_loop = asyncio.get_event_loop
-
-
 class Queue(Generic[T]):
     def __init__(self, maxsize: int = 0) -> None:
-        self._loop = current_loop()
+        self._loop = asyncio.get_running_loop()
         self._maxsize = maxsize
 
         self._init(maxsize)
@@ -235,7 +230,7 @@ class Queue(Generic[T]):
             with self._sync_mutex:
                 self._sync_not_full.notify()
 
-        fut = self._loop.run_in_executor(None, f)
+        fut = asyncio.ensure_future(self._loop.run_in_executor(None, f))
         fut.add_done_callback(self._pending.discard)
         self._pending.add(fut)
 

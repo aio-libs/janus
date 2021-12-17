@@ -52,7 +52,7 @@ class TestMixedMode:
 
     @pytest.mark.asyncio
     async def test_sync_put_async_get(self):
-        loop = janus.current_loop()
+        loop = asyncio.get_running_loop()
         q = janus.Queue()
 
         def threaded():
@@ -77,7 +77,7 @@ class TestMixedMode:
 
     @pytest.mark.asyncio
     async def test_sync_put_async_join(self):
-        loop = janus.current_loop()
+        loop = asyncio.get_running_loop()
         q = janus.Queue()
 
         for i in range(5):
@@ -102,7 +102,7 @@ class TestMixedMode:
 
     @pytest.mark.asyncio
     async def test_async_put_sync_get(self):
-        loop = janus.current_loop()
+        loop = asyncio.get_running_loop()
         q = janus.Queue()
 
         def threaded():
@@ -126,7 +126,7 @@ class TestMixedMode:
 
     @pytest.mark.asyncio
     async def test_sync_join_async_done(self):
-        loop = janus.current_loop()
+        loop = asyncio.get_running_loop()
         q = janus.Queue()
 
         def threaded():
@@ -153,7 +153,7 @@ class TestMixedMode:
 
     @pytest.mark.asyncio
     async def test_async_join_async_done(self):
-        loop = janus.current_loop()
+        loop = asyncio.get_running_loop()
         q = janus.Queue()
 
         def threaded():

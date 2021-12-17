@@ -20,7 +20,7 @@ class TestQueueBasic:
         assert fn(q).startswith("<Queue")
         id_is_present = hex(id(q)) in fn(q)
         assert expect_id == id_is_present
-        loop = janus.current_loop()
+        loop = asyncio.get_running_loop()
 
         async def add_getter():
             _q = janus.Queue()
@@ -105,7 +105,7 @@ class TestQueueBasic:
 
     @pytest.mark.asyncio
     async def test_maxsize(self):
-        loop = janus.current_loop()
+        loop = asyncio.get_running_loop()
         _q = janus.Queue(maxsize=2)
         q = _q.async_q
         assert 2 == q.maxsize
@@ -158,7 +158,7 @@ class TestQueueGetTests:
 
     @pytest.mark.asyncio
     async def test_get_with_putters(self):
-        loop = janus.current_loop()
+        loop = asyncio.get_running_loop()
         _q = janus.Queue(1)
         q = _q.async_q
         q.put_nowait(1)
@@ -185,7 +185,7 @@ class TestQueueGetTests:
 
     @pytest.mark.asyncio
     async def test_blocking_get_wait(self):
-        loop = janus.current_loop()
+        loop = asyncio.get_running_loop()
         _q = janus.Queue()
         q = _q.async_q
         started = asyncio.Event()
@@ -235,7 +235,7 @@ class TestQueueGetTests:
 
     @pytest.mark.asyncio
     async def test_get_cancelled(self):
-        loop = janus.current_loop()
+        loop = asyncio.get_running_loop()
         _q = janus.Queue()
         q = _q.async_q
 
@@ -256,7 +256,7 @@ class TestQueueGetTests:
 
     @pytest.mark.asyncio
     async def test_get_cancelled_race(self):
-        loop = janus.current_loop()
+        loop = asyncio.get_running_loop()
         _q = janus.Queue()
         q = _q.async_q
 
@@ -287,7 +287,7 @@ class TestQueueGetTests:
 
     @pytest.mark.asyncio
     async def test_get_with_waiting_putters(self):
-        loop = janus.current_loop()
+        loop = asyncio.get_running_loop()
         _q = janus.Queue(maxsize=1)
         q = _q.async_q
 
@@ -319,7 +319,7 @@ class TestQueuePut:
 
     @pytest.mark.asyncio
     async def test_blocking_put_wait(self):
-        loop = janus.current_loop()
+        loop = asyncio.get_running_loop()
         _q = janus.Queue(maxsize=1)
         q = _q.async_q
         started = asyncio.Event()
@@ -396,7 +396,7 @@ class TestQueuePut:
 
     @pytest.mark.asyncio
     async def test_put_cancelled(self):
-        loop = janus.current_loop()
+        loop = asyncio.get_running_loop()
         _q = janus.Queue()
         q = _q.async_q
 
@@ -418,7 +418,7 @@ class TestQueuePut:
 
     @pytest.mark.asyncio
     async def test_put_cancelled_race(self):
-        loop = janus.current_loop()
+        loop = asyncio.get_running_loop()
         _q = janus.Queue(maxsize=1)
         q = _q.async_q
 
@@ -449,7 +449,7 @@ class TestQueuePut:
 
     @pytest.mark.asyncio
     async def test_put_with_waiting_getters(self):
-        loop = janus.current_loop()
+        loop = asyncio.get_running_loop()
         fut = loop.create_future()
 
         async def go():
@@ -520,7 +520,7 @@ class _QueueJoinTestMixin:
 
     @pytest.mark.asyncio
     async def test_task_done(self):
-        loop = janus.current_loop()
+        loop = asyncio.get_running_loop()
         _q = self.q_class()
         q = _q.async_q
         for i in range(100):
