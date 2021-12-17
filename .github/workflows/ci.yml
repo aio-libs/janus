@@ -76,7 +76,6 @@ jobs:
     - name: Upload coverage artifact
       uses: aio-libs/prepare-coverage@v21.9.1
       with:
-        file: './.coverage.xml'
         key: unit-${{ matrix.python-version }}
 
   check:  # The branch protection check
