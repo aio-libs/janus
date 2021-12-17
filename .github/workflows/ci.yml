@@ -81,7 +81,7 @@ jobs:
 
   check:  # The branch protection check
     if: always()
-    needs: [lint, test]
+    needs: [lint, unit]
     runs-on: ubuntu-latest
     steps:
     - name: Decide whether the needed jobs succeeded or failed
