@@ -38,10 +38,9 @@ jobs:
 
   unit:
     name: Unit
-    needs: lint
     strategy:
       matrix:
-        python-version: ["3.6", "3.7", "3.8", "3.9", "3.10"]
+        python-version: ["3.7", "3.8", "3.9", "3.10"]
         os: [ubuntu]
       fail-fast:
         false
@@ -74,13 +73,23 @@ jobs:
         COLOR: 'yes'
       run: |
         pytest --cov=janus --cov=tests --cov-report=term --cov-report=xml:coverage.xml
-    - name: Upload coverage
-      uses: codecov/codecov-action@v1
+    - name: Upload coverage artifact
+      uses: aio-libs/prepare-coverage@v21.9.1
       with:
-        token: ${{ secrets.CODECOV_TOKEN }}
-        file: ./coverage.xml
-        flags: unit
-        fail_ci_if_error: false
+        file: './.coverage.xml'
+        key: unit-${{ matrix.python-version }}
+
+  check:  # The branch protection check
+    if: always()
+    needs: [lint, test]
+    runs-on: ubuntu-latest
+    steps:
+    - name: Decide whether the needed jobs succeeded or failed
+      uses: re-actors/alls-green@release/v1
+      with:
+        jobs: ${{ toJSON(needs) }}
+    - name: Upload coverage
+      uses: aio-libs/upload-coverage@v21.9.4
 
   deploy:
     name: Deploy
