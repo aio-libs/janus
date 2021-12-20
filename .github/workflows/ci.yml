@@ -29,7 +29,7 @@ jobs:
         restore-keys: |
             pip-lint-
     - name: Install dependencies
-      uses: py-actions/py-dependency-install@v2
+      uses: py-actions/py-dependency-install@v3.0.0
       with:
         path: requirements-dev.txt
     - name: Run linters
@@ -65,7 +65,7 @@ jobs:
         restore-keys: |
             pip-ci-${{ runner.os }}-${{ matrix.python-version }}-
     - name: Install dependencies
-      uses: py-actions/py-dependency-install@v2
+      uses: py-actions/py-dependency-install@v3.0.0
       with:
         path: requirements-dev.txt
     - name: Run unittests
@@ -102,7 +102,7 @@ jobs:
     - name: Setup Python
       uses: actions/setup-python@v2
     - name: Install dependencies
-      uses: py-actions/py-dependency-install@v2
+      uses: py-actions/py-dependency-install@v3.0.0
       with:
         path: requirements-dev.txt
     - name: Install twine
