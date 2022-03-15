@@ -63,6 +63,7 @@ Usage example (Python 3.7+)
 
 Usage example (Python 3.5 and 3.6)
 ==================================
+**N.B. For python 3.6 and below you must use janus <= 1.0.0**
 
 .. code:: python
 
