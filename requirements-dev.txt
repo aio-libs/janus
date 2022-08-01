@@ -3,7 +3,7 @@ black==22.6.0
 bandit==1.7.4
 coverage==6.4.2
 docutils==0.19
-flake8==4.0.1
+flake8==5.0.1
 mypy==0.971
 pyroma==4.0
 pytest-cov==3.0.0
