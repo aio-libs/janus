@@ -1,6 +1,7 @@
 import asyncio
 import sys
 import threading
+from asyncio import AbstractEventLoop
 from asyncio import QueueEmpty as AsyncQueueEmpty
 from asyncio import QueueFull as AsyncQueueFull
 from collections import deque
@@ -111,8 +112,8 @@ class AsyncQueue(BaseQueue[T], Protocol[T]):
 
 
 class Queue(Generic[T]):
-    def __init__(self, maxsize: int = 0) -> None:
-        self._loop = asyncio.get_running_loop()
+    def __init__(self, maxsize: int = 0, loop: Optional[AbstractEventLoop] = None) -> None:
+        self._loop = loop or asyncio.get_running_loop()
         self._maxsize = maxsize
 
         self._init(maxsize)
