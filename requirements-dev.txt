@@ -1,5 +1,5 @@
 -e .
-black==22.6.0
+black==22.8.0
 bandit==1.7.4
 coverage==6.4.4
 docutils==0.19
