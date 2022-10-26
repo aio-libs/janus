@@ -7,7 +7,7 @@ flake8==5.0.4
 mypy==0.982
 pyroma==4.0
 pytest-cov==4.0.0
-pytest==7.1.3
+pytest==7.2.0
 pytest-asyncio==0.20.1
 isort==5.10.1
 tox==3.27.0
