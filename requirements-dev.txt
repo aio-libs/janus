@@ -5,7 +5,7 @@ coverage==6.5.0
 docutils==0.19
 flake8==6.0.0
 mypy==0.991
-pyroma==4.0
+pyroma==4.1
 pytest-cov==4.0.0
 pytest==7.2.0
 pytest-asyncio==0.20.2
