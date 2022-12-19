@@ -1,7 +1,7 @@
 -e .
 black==22.10.0
 bandit==1.7.4
-coverage==6.5.0
+coverage==7.0.0
 docutils==0.19
 flake8==6.0.0
 mypy==0.991
