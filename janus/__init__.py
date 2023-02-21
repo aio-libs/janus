@@ -1,3 +1,4 @@
+import anyio
 import asyncio
 import sys
 import threading
@@ -7,7 +8,7 @@ from collections import deque
 from heapq import heappop, heappush
 from queue import Empty as SyncQueueEmpty
 from queue import Full as SyncQueueFull
-from typing import Any, Callable, Deque, Generic, List, Optional, Set, TypeVar
+from typing import Any, Callable, Deque, Generic, List, Optional, Set, TypeVar  # noqa F401
 
 from typing_extensions import Protocol
 
@@ -223,14 +224,16 @@ class Queue(Generic[T]):
             with self._sync_mutex:
                 self._sync_not_empty.notify()
 
-        self._loop.run_in_executor(None, f)
+        asyncio.ensure_future(anyio.to_thread.run_sync(f, *[]))
+        # self._loop.run_in_executor(None, f)
 
     def _notify_sync_not_full(self) -> None:
         def f() -> None:
             with self._sync_mutex:
                 self._sync_not_full.notify()
 
-        fut = asyncio.ensure_future(self._loop.run_in_executor(None, f))
+        fut = asyncio.ensure_future(anyio.to_thread.run_sync(f, *[]))
+        # fut = asyncio.ensure_future(self._loop.run_in_executor(None, f))
         fut.add_done_callback(self._pending.discard)
         self._pending.add(fut)
 
