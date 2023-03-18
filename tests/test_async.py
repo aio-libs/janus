@@ -505,7 +505,6 @@ class TestPriorityQueue:
 
 
 class _QueueJoinTestMixin:
-
     q_class = None
 
     @pytest.mark.asyncio

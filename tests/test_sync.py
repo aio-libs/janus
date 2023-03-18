@@ -93,7 +93,6 @@ class BlockingTestMixin:
 
 
 class BaseQueueTestMixin(BlockingTestMixin):
-
     cum = 0
     cumlock = threading.Lock()
 
