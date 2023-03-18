@@ -134,7 +134,7 @@ class Queue(Generic[T]):
         self._finished.set()
 
         self._closing = False
-        self._pending = set()  # type: Set[asyncio.Future[Any]]
+        self._pending: Set[asyncio.Future[Any]] = set()
 
         def checked_call_soon_threadsafe(
             callback: Callable[..., None], *args: Any
@@ -200,7 +200,7 @@ class Queue(Generic[T]):
     # These will only be called with appropriate locks held
 
     def _init(self, maxsize: int) -> None:
-        self._queue = deque()  # type: Deque[T]
+        self._queue: Deque[T] = deque()
 
     def _qsize(self) -> int:
         return len(self._queue)
@@ -624,7 +624,7 @@ class PriorityQueue(Queue[T]):
     """
 
     def _init(self, maxsize: int) -> None:
-        self._heap_queue = []  # type: List[T]
+        self._heap_queue: List[T] = []
 
     def _qsize(self) -> int:
         return len(self._heap_queue)
