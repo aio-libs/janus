@@ -59,35 +59,6 @@ class BaseQueue(Protocol[T]):
 
 
 class SyncQueue(BaseQueue[T], Protocol[T]):
-    @property
-    def maxsize(self) -> int:
-        ...
-
-    @property
-    def closed(self) -> bool:
-        ...
-
-    def task_done(self) -> None:
-        ...
-
-    def qsize(self) -> int:
-        ...
-
-    @property
-    def unfinished_tasks(self) -> int:
-        ...
-
-    def empty(self) -> bool:
-        ...
-
-    def full(self) -> bool:
-        ...
-
-    def put_nowait(self, item: T) -> None:
-        ...
-
-    def get_nowait(self) -> T:
-        ...
 
     def put(self, item: T, block: bool = True, timeout: OptFloat = None) -> None:
         ...
@@ -134,7 +105,7 @@ class Queue(Generic[T]):
         self._finished.set()
 
         self._closing = False
-        self._pending: Set[asyncio.Future[Any]] = set()
+        self._pending = set()  # type: Set[asyncio.Future[Any]]
 
         def checked_call_soon_threadsafe(
             callback: Callable[..., None], *args: Any
@@ -200,7 +171,7 @@ class Queue(Generic[T]):
     # These will only be called with appropriate locks held
 
     def _init(self, maxsize: int) -> None:
-        self._queue: Deque[T] = deque()
+        self._queue = deque()  # type: Deque[T]
 
     def _qsize(self) -> int:
         return len(self._queue)
@@ -624,7 +595,7 @@ class PriorityQueue(Queue[T]):
     """
 
     def _init(self, maxsize: int) -> None:
-        self._heap_queue: List[T] = []
+        self._heap_queue = []  # type: List[T]
 
     def _qsize(self) -> int:
         return len(self._heap_queue)
