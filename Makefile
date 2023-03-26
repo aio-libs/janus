@@ -28,4 +28,4 @@ bandit:
 	bandit -r ./janus
 
 mypy:
-	mypy janus --disallow-untyped-calls --disallow-incomplete-defs --strict
+	mypy janus --strict
