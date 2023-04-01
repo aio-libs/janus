@@ -135,16 +135,16 @@ class PreInitDummyAsyncQueue:
     redirecting everything to the actual 'async_q'
     """
 
-    def __init__(self, trigger_obj: "Queue"):
+    def __init__(self, trigger_obj: "Queue[T]"):
         self.trigger_obj = trigger_obj
         self.already_triggered = threading.Event()
 
     def __getattribute__(self, item):
         already_triggered = super().__getattribute__("already_triggered") # type: threading.Event
-        trigger_obj = super().__getattribute__("trigger_obj")
+        trigger_obj = super().__getattribute__("trigger_obj") # type: Queue[T]
 
         if already_triggered.is_set():
-            async_q = getattr(trigger_obj, "async_q")
+            async_q = getattr(trigger_obj, "async_q") # type: Union[_AsyncQueueProxy[T], PreInitDummyAsyncQueue]
 
             if not isinstance(async_q, _AsyncQueueProxy):
                 raise RuntimeError("Async parts multi-initialization detected. You cannot access 'async_q' attrs "
@@ -153,7 +153,7 @@ class PreInitDummyAsyncQueue:
 
         already_triggered.set()
         trigger_obj.trigger_async_initialization()
-        async_q = getattr(trigger_obj, "async_q")
+        async_q = getattr(trigger_obj, "async_q") # type: _AsyncQueueProxy[T]
 
         if isinstance(async_q, PreInitDummyAsyncQueue):
             raise RuntimeError("Error during post initializing. 'async_q' must be replaced with actual 'AsyncQueue'")
