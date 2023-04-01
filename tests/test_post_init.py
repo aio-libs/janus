@@ -265,3 +265,32 @@ class TestSyncThenPostInitAsync:
         loop.run_until_complete(init_async(queue.async_q))
         queue.close()
         loop.run_until_complete(queue.wait_closed())
+
+    def test_async_producers_sync_consumer(self):
+        num_of_producers = 6
+        items = 7
+
+        total_items = num_of_producers * items
+
+        queue: janus.Queue[Any] = janus.Queue(maxsize=total_items, init_async_part=False)
+
+        async def producer(async_q: janus.AsyncQueue, prod_num: int):
+            for i in range(items):
+                await async_q.put((prod_num, i))
+
+        fut = asyncio.gather(
+            *(producer(queue.async_q, cor_num) for cor_num in range(num_of_producers))
+        )
+
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(fut)
+
+        actual_count = 0
+        while not queue.sync_q.empty():
+            queue.sync_q.get()
+            queue.sync_q.task_done()
+            actual_count += 1
+
+        assert actual_count == total_items
+
+        queue.close()
