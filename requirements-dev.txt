@@ -9,6 +9,6 @@ pyroma==4.2
 pytest-cov==4.1.0
 pytest==7.4.3
 pytest-asyncio==0.23.2
-isort==5.13.1
+isort==5.13.2
 tox==4.11.4
 wheel==0.42.0
