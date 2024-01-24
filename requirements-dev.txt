@@ -1,6 +1,6 @@
 -e .
 black==23.12.1
-bandit==1.7.6
+bandit==1.7.7
 coverage==7.4.0
 docutils==0.20.1
 flake8==7.0.0
