@@ -8,7 +8,7 @@ mypy==1.9.0
 pyroma==4.2
 pytest-cov==4.1.0
 pytest==8.1.1
-pytest-asyncio==0.23.5.post1
+pytest-asyncio==0.23.6
 isort==5.13.2
 tox==4.14.1
 wheel==0.43.0
