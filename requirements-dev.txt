@@ -2,7 +2,7 @@
 black==24.3.0
 bandit==1.7.8
 coverage==7.4.4
-docutils==0.21.post1
+docutils==0.21.1
 flake8==7.0.0
 mypy==1.9.0
 pyroma==4.2
