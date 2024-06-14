@@ -9,7 +9,11 @@ from queue import Empty as SyncQueueEmpty
 from queue import Full as SyncQueueFull
 from typing import Any, Callable, Deque, Generic, List, Optional, Set, TypeVar
 
-from typing_extensions import Protocol
+try:
+    # Python 3.8+
+    from typing import Protocol
+except ImportError:
+    from typing_extensions import Protocol
 
 __version__ = "1.0.0"
 __all__ = (
