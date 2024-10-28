@@ -17,7 +17,11 @@ __all__ = (
     "PriorityQueue",
     "LifoQueue",
     "SyncQueue",
+    "SyncQueueEmpty",
+    "SyncQueueFull",
     "AsyncQueue",
+    "AsyncQueueEmpty",
+    "AsyncQueueFull",
     "BaseQueue",
 )
 
