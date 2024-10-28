@@ -2,7 +2,8 @@ develop:
 	python setup.py develop
 
 lint flake: checkrst  pyroma bandit mypy
-	flake8 janus tests
+	# F401 is upset about typing.Deque, List, and Set which are used in hinting
+	flake8 --ignore=F401 janus tests
 
 test: flake develop
 	pytest tests
