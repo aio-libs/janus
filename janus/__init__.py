@@ -7,9 +7,7 @@ from collections import deque
 from heapq import heappop, heappush
 from queue import Empty as SyncQueueEmpty
 from queue import Full as SyncQueueFull
-from typing import Any, Callable, Deque, Generic, List, Optional, Set, TypeVar
-
-from typing_extensions import Protocol
+from typing import Any, Callable, Deque, Generic, List, Optional, Protocol, Set, TypeVar
 
 __version__ = "1.0.0"
 __all__ = (
