@@ -9,11 +9,6 @@ import janus
 
 
 class TestMixedMode:
-    @pytest.mark.skipif(
-        sys.version_info < (3, 7),
-        reason="forbidding implicit loop creation works on "
-        "Python 3.7 or higher only",
-    )
     def test_ctor_noloop(self):
         with pytest.raises(RuntimeError):
             janus.Queue()
