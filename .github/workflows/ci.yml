@@ -91,7 +91,9 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v4
     - name: Upload coverage
-      uses: aio-libs/upload-coverage@v24.10.0
+      uses: aio-libs/upload-coverage@v24.10.1
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
 
   deploy:
     name: Deploy
