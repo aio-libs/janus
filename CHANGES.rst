@@ -1,6 +1,15 @@
 Changes
 =======
 
+1.1.0 (2024-10-30)
+------------------
+
+- Drop Python 3.7 and 3.8 support
+
+- janus now works on Python 3.9-3.13
+
+- Reexport SyncQueueEmpty, SyncQueueFull, AsyncQueueEmpty, and AsyncQueueFull names #680
+
 1.0.0 (2021-12-17)
 ------------------
 

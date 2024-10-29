@@ -9,7 +9,7 @@ from queue import Empty as SyncQueueEmpty
 from queue import Full as SyncQueueFull
 from typing import Any, Callable, Generic, Optional, Protocol, TypeVar
 
-__version__ = "1.0.0"
+__version__ = "1.1.0"
 __all__ = (
     "Queue",
     "PriorityQueue",
