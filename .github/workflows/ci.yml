@@ -18,9 +18,9 @@ jobs:
     timeout-minutes: 5
     steps:
     - name: Checkout
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
     - name: Setup Python
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v5
     - name: Cache PyPI
       uses: actions/cache@v2
       with:
@@ -29,7 +29,7 @@ jobs:
         restore-keys: |
             pip-lint-
     - name: Install dependencies
-      uses: py-actions/py-dependency-install@v3.0.0
+      uses: py-actions/py-dependency-install@v4.1.0
       with:
         path: requirements-dev.txt
     - name: Run linters
@@ -48,9 +48,9 @@ jobs:
     timeout-minutes: 15
     steps:
     - name: Checkout
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
     - name: Setup Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
     - name: Get pip cache dir
@@ -65,7 +65,7 @@ jobs:
         restore-keys: |
             pip-ci-${{ runner.os }}-${{ matrix.python-version }}-
     - name: Install dependencies
-      uses: py-actions/py-dependency-install@v3.0.0
+      uses: py-actions/py-dependency-install@v4.1.0
       with:
         path: requirements-dev.txt
     - name: Run unittests
@@ -74,7 +74,7 @@ jobs:
       run: |
         pytest --cov=janus --cov=tests --cov-report=term --cov-report=xml:coverage.xml
     - name: Upload coverage artifact
-      uses: aio-libs/prepare-coverage@v21.9.1
+      uses: aio-libs/prepare-coverage@v24.9.2
       with:
         key: unit-${{ matrix.python-version }}
 
@@ -88,7 +88,7 @@ jobs:
       with:
         jobs: ${{ toJSON(needs) }}
     - name: Upload coverage
-      uses: aio-libs/upload-coverage@v21.9.4
+      uses: aio-libs/upload-coverage@v24.10.0
 
   deploy:
     name: Deploy
@@ -98,11 +98,11 @@ jobs:
     if: github.event_name == 'push' && contains(github.ref, 'refs/tags/')
     steps:
     - name: Checkout
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
     - name: Setup Python
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v5
     - name: Install dependencies
-      uses: py-actions/py-dependency-install@v3.0.0
+      uses: py-actions/py-dependency-install@v4.1.0
       with:
         path: requirements-dev.txt
     - name: Install twine
