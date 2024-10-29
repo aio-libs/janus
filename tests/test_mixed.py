@@ -1,6 +1,5 @@
 import asyncio
 import contextlib
-import sys
 import threading
 
 import pytest

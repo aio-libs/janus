@@ -7,7 +7,7 @@ from collections import deque
 from heapq import heappop, heappush
 from queue import Empty as SyncQueueEmpty
 from queue import Full as SyncQueueFull
-from typing import Any, Callable, Deque, Generic, List, Optional, Protocol, Set, TypeVar
+from typing import Any, Callable, Generic, Optional, Protocol, TypeVar
 
 __version__ = "1.0.0"
 __all__ = (
@@ -15,7 +15,11 @@ __all__ = (
     "PriorityQueue",
     "LifoQueue",
     "SyncQueue",
+    "SyncQueueEmpty",
+    "SyncQueueFull",
     "AsyncQueue",
+    "AsyncQueueEmpty",
+    "AsyncQueueFull",
     "BaseQueue",
 )
 
@@ -103,7 +107,7 @@ class Queue(Generic[T]):
         self._finished.set()
 
         self._closing = False
-        self._pending = set()  # type: Set[asyncio.Future[Any]]
+        self._pending: set[asyncio.Future[Any]] = set()
 
         def checked_call_soon_threadsafe(
             callback: Callable[..., None], *args: Any
@@ -169,7 +173,7 @@ class Queue(Generic[T]):
     # These will only be called with appropriate locks held
 
     def _init(self, maxsize: int) -> None:
-        self._queue = deque()  # type: Deque[T]
+        self._queue: deque[T] = deque()
 
     def _qsize(self) -> int:
         return len(self._queue)
@@ -593,7 +597,7 @@ class PriorityQueue(Queue[T]):
     """
 
     def _init(self, maxsize: int) -> None:
-        self._heap_queue = []  # type: List[T]
+        self._heap_queue: list[T] = []
 
     def _qsize(self) -> int:
         return len(self._heap_queue)

@@ -87,6 +87,8 @@ jobs:
       uses: re-actors/alls-green@release/v1
       with:
         jobs: ${{ toJSON(needs) }}
+    - name: Checkout
+      uses: actions/checkout@v4
     - name: Upload coverage
       uses: aio-libs/upload-coverage@v24.10.0
 
