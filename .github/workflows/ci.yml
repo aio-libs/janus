@@ -20,7 +20,7 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v4
     - name: Setup Python
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v5
     - name: Cache PyPI
       uses: actions/cache@v2
       with:
@@ -50,7 +50,7 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v4
     - name: Setup Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
     - name: Get pip cache dir
@@ -100,7 +100,7 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v4
     - name: Setup Python
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v5
     - name: Install dependencies
       uses: py-actions/py-dependency-install@v3.0.0
       with:
