@@ -22,7 +22,7 @@ jobs:
     - name: Setup Python
       uses: actions/setup-python@v5
     - name: Cache PyPI
-      uses: actions/cache@v2
+      uses: actions/cache@v4
       with:
         key: pip-lint-${{ hashFiles('requirements-dev.txt') }}
         path: ~/.cache/pip
@@ -59,7 +59,7 @@ jobs:
         echo "dir=$(pip cache dir)" >> $GITHUB_OUTPUT    # - name: Cache
       shell: bash
     - name: Cache PyPI
-      uses: actions/cache@v2
+      uses: actions/cache@v4
       with:
         key: pip-ci-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('requirements-dev.txt') }}
         path: ${{ steps.pip-cache.outputs.dir }}
