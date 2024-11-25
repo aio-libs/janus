@@ -100,7 +100,7 @@ time-tested, but has some limitations.
 Development status is production/stable. The ``janus`` library is maintained to
 support the latest versions of Python and fixes, but no major changes will be
 made. If your application is performance-sensitive, or if you need any new
-features such as ``anyio`` support, try the
+features such as ``anyio`` support, try the experimental
 `culsans <https://github.com/x42005e1f/culsans>`_ library as an alternative.
 
 
