@@ -15,7 +15,7 @@
 
 Mixed sync-async queue, supposed to be used for communicating between
 classic synchronous (threaded) code and asynchronous (in terms of
-asyncio_) one.
+`asyncio <https://docs.python.org/3/library/asyncio.html>`_) one.
 
 Like `Janus god <https://en.wikipedia.org/wiki/Janus>`_ the queue
 object from the library has two faces: synchronous and asynchronous
@@ -26,8 +26,23 @@ Synchronous is fully compatible with `standard queue
 follows `asyncio queue design
 <https://docs.python.org/3/library/asyncio-queue.html>`_.
 
-Usage example
-=============
+Usage
+=====
+
+Three queues are available:
+
+* ``Queue``
+* ``LifoQueue``
+* ``PriorityQueue``
+
+Each has two properties: ``sync_q`` and ``async_q``.
+
+Use the first to get synchronous interface and the second to get asynchronous
+one.
+
+
+Example
+-------
 
 .. code:: python
 
@@ -61,6 +76,34 @@ Usage example
     asyncio.run(main())
 
 
+Limitations
+===========
+
+This library is built using a classic thread-safe design. The design is
+time-tested, but has some limitations.
+
+* Once you are done working with a queue, you must properly close it using
+  ``close()`` and ``wait_closed()``. This is because this library creates new
+  tasks to notify other threads. If you do not properly close the queue,
+  `asyncio may generate error messages
+  <https://github.com/aio-libs/janus/issues/574>`_.
+* The library has acceptable performance only when used as intended, that is,
+  for communication between synchronous code and asynchronous one.
+  For sync-only and async-only cases, use queues from
+  `queue <https://docs.python.org/3/library/queue.html>`_ and
+  `asyncio <https://docs.python.org/3/library/asyncio-queue.html>`_ modules,
+  otherwise `the slowdown will be significant
+  <https://github.com/aio-libs/janus/issues/419>`_.
+* You cannot use queues for communicating between two different event loops
+  because, like all asyncio primitives, they bind to the current one.
+
+Development status is production/stable. The ``janus`` library is maintained to
+support the latest versions of Python and fixes, but no major changes will be
+made. If your application is performance-sensitive, or if you need any new
+features such as ``anyio`` support, try the experimental
+`culsans <https://github.com/x42005e1f/culsans>`_ library as an alternative.
+
+
 Communication channels
 ======================
 
@@ -80,5 +123,3 @@ Thanks
 ======
 
 The library development is sponsored by DataRobot (https://datarobot.com)
-
-.. _asyncio: https://docs.python.org/3/library/asyncio.html
