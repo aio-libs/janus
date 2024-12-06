@@ -77,8 +77,8 @@ class TestMixedMode:
             q.sync_q.put(i)
 
         async def do_work():
-            await asyncio.sleep(1)
-            while True:
+            await asyncio.sleep(0.1)
+            while not q.async_q.empty():
                 await q.async_q.get()
                 q.async_q.task_done()
 
@@ -86,7 +86,7 @@ class TestMixedMode:
 
         async def wait_for_empty_queue():
             await q.async_q.join()
-            task.cancel()
+            await task
 
         await wait_for_empty_queue()
 

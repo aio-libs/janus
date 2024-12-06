@@ -79,9 +79,43 @@ jobs:
       with:
         key: unit-${{ matrix.python-version }}
 
+  benchmark:
+    name: Benchmark
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+    - name: Setup Python 3.13
+      uses: actions/setup-python@v5
+      with:
+        python-version: 3.13
+    - name: Get pip cache dir
+      id: pip-cache
+      run: |
+        echo "dir=$(pip cache dir)" >> $GITHUB_OUTPUT    # - name: Cache
+      shell: bash
+    - name: Cache PyPI
+      uses: actions/cache@v4
+      with:
+        key: pip-ci-ubuntu-3.13-${{ hashFiles('requirements-dev.txt') }}
+        path: ${{ steps.pip-cache.outputs.dir }}
+        restore-keys: |
+            pip-ci-ubuntu-3.13-
+    - name: Install dependencies
+      uses: py-actions/py-dependency-install@v4.1.0
+      with:
+        path: requirements-dev.txt
+    - name: Run benchmarks
+      uses: CodSpeedHQ/action@v3
+      with:
+        token: ${{ secrets.CODSPEED_TOKEN }}
+        run: python -Im pytest --no-cov --numprocesses=0 -vvvvv --codspeed
+
+
   check:  # The branch protection check
     if: always()
-    needs: [lint, unit]
+    needs: [lint, unit, benchmark]
     runs-on: ubuntu-latest
     steps:
     - name: Decide whether the needed jobs succeeded or failed
