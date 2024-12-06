@@ -479,7 +479,9 @@ class _QueueJoinTestMixin:
     async def test_task_done_underflow(self):
         _q = self.q_class()
         q = _q.async_q
-        with pytest.raises(ValueError, match=re.escape("task_done() called too many times")):
+        with pytest.raises(
+            ValueError, match=re.escape("task_done() called too many times")
+        ):
             q.task_done()
 
         await close(_q)

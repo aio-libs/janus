@@ -187,7 +187,9 @@ class BaseQueueTestMixin(BlockingTestMixin):
         # Test to make sure a queue task completed successfully.
         _q = self.type2test()
         q = _q.sync_q
-        with pytest.raises(ValueError, match=re.escape("task_done() called too many times")):
+        with pytest.raises(
+            ValueError, match=re.escape("task_done() called too many times")
+        ):
             q.task_done()
         _q.close()
         await _q.wait_closed()
@@ -200,7 +202,9 @@ class BaseQueueTestMixin(BlockingTestMixin):
         q = _q.sync_q
         self.queue_join_test(q)
         self.queue_join_test(q)
-        with pytest.raises(ValueError, match=re.escape("task_done() called too many times")):
+        with pytest.raises(
+            ValueError, match=re.escape("task_done() called too many times")
+        ):
             q.task_done()
         _q.close()
         await _q.wait_closed()
