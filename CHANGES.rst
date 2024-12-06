@@ -1,6 +1,11 @@
 Changes
 =======
 
+1.2.0 (2024-12-XX)
+------------------
+
+- Optimize internal implementation for a little speedup
+
 1.1.0 (2024-10-30)
 ------------------
 

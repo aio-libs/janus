@@ -273,15 +273,16 @@ class _SyncQueueProxy(SyncQueue[T]):
         Raises a ValueError if called more times than there were items
         placed in the queue.
         """
-        self._parent._check_closing()
-        with self._parent._all_tasks_done:
-            unfinished = self._parent._unfinished_tasks - 1
+        parent = self._parent
+        parent._check_closing()
+        with parent._all_tasks_done:
+            unfinished = parent._unfinished_tasks - 1
             if unfinished <= 0:
                 if unfinished < 0:
                     raise ValueError("task_done() called too many times")
-                self._parent._all_tasks_done.notify_all()
-                self._parent._loop.call_soon_threadsafe(self._parent._finished.set)
-            self._parent._unfinished_tasks = unfinished
+                parent._all_tasks_done.notify_all()
+                parent._loop.call_soon_threadsafe(parent._finished.set)
+            parent._unfinished_tasks = unfinished
 
     def join(self) -> None:
         """Blocks until all items in the Queue have been gotten and processed.
@@ -292,11 +293,12 @@ class _SyncQueueProxy(SyncQueue[T]):
 
         When the count of unfinished tasks drops to zero, join() unblocks.
         """
-        self._parent._check_closing()
-        with self._parent._all_tasks_done:
-            while self._parent._unfinished_tasks:
-                self._parent._all_tasks_done.wait()
-                self._parent._check_closing()
+        parent = self._parent
+        parent._check_closing()
+        with parent._all_tasks_done:
+            while parent._unfinished_tasks:
+                parent._all_tasks_done.wait()
+                parent._check_closing()
 
     def qsize(self) -> int:
         """Return the approximate size of the queue (not reliable!)."""
@@ -328,7 +330,8 @@ class _SyncQueueProxy(SyncQueue[T]):
         condition where a queue can shrink before the result of full() or
         qsize() can be used.
         """
-        return 0 < self._parent._maxsize <= self._parent._qsize()
+        parent = self._parent
+        return 0 < parent._maxsize <= parent._qsize()
 
     def put(self, item: T, block: bool = True, timeout: OptFloat = None) -> None:
         """Put an item into the queue.
@@ -341,28 +344,29 @@ class _SyncQueueProxy(SyncQueue[T]):
         is immediately available, else raise the Full exception ('timeout'
         is ignored in that case).
         """
-        self._parent._check_closing()
-        with self._parent._sync_not_full:
-            if self._parent._maxsize > 0:
+        parent = self._parent
+        parent._check_closing()
+        with parent._sync_not_full:
+            if parent._maxsize > 0:
                 if not block:
-                    if self._parent._qsize() >= self._parent._maxsize:
+                    if parent._qsize() >= parent._maxsize:
                         raise SyncQueueFull
                 elif timeout is None:
-                    while self._parent._qsize() >= self._parent._maxsize:
-                        self._parent._sync_not_full.wait()
+                    while parent._qsize() >= parent._maxsize:
+                        parent._sync_not_full.wait()
                 elif timeout < 0:
                     raise ValueError("'timeout' must be a non-negative number")
                 else:
-                    time = self._parent._loop.time
+                    time = parent._loop.time
                     endtime = time() + timeout
-                    while self._parent._qsize() >= self._parent._maxsize:
+                    while parent._qsize() >= parent._maxsize:
                         remaining = endtime - time()
                         if remaining <= 0.0:
                             raise SyncQueueFull
-                        self._parent._sync_not_full.wait(remaining)
-            self._parent._put_internal(item)
-            self._parent._sync_not_empty.notify()
-            self._parent._notify_async_not_empty(threadsafe=True)
+                        parent._sync_not_full.wait(remaining)
+            parent._put_internal(item)
+            parent._sync_not_empty.notify()
+            parent._notify_async_not_empty(threadsafe=True)
 
     def get(self, block: bool = True, timeout: OptFloat = None) -> T:
         """Remove and return an item from the queue.
@@ -375,27 +379,28 @@ class _SyncQueueProxy(SyncQueue[T]):
         available, else raise the Empty exception ('timeout' is ignored
         in that case).
         """
-        self._parent._check_closing()
-        with self._parent._sync_not_empty:
+        parent = self._parent
+        parent._check_closing()
+        with parent._sync_not_empty:
             if not block:
-                if not self._parent._qsize():
+                if not parent._qsize():
                     raise SyncQueueEmpty
             elif timeout is None:
-                while not self._parent._qsize():
-                    self._parent._sync_not_empty.wait()
+                while not parent._qsize():
+                    parent._sync_not_empty.wait()
             elif timeout < 0:
                 raise ValueError("'timeout' must be a non-negative number")
             else:
-                time = self._parent._loop.time
+                time = parent._loop.time
                 endtime = time() + timeout
-                while not self._parent._qsize():
+                while not parent._qsize():
                     remaining = endtime - time()
                     if remaining <= 0.0:
                         raise SyncQueueEmpty
-                    self._parent._sync_not_empty.wait(remaining)
-            item = self._parent._get()
-            self._parent._sync_not_full.notify()
-            self._parent._notify_async_not_full(threadsafe=True)
+                    parent._sync_not_empty.wait(remaining)
+            item = parent._get()
+            parent._sync_not_full.notify()
+            parent._notify_async_not_full(threadsafe=True)
             return item
 
     def put_nowait(self, item: T) -> None:
@@ -452,10 +457,11 @@ class _AsyncQueueProxy(AsyncQueue[T]):
         Note: if the Queue was initialized with maxsize=0 (the default),
         then full() is never True.
         """
-        if self._parent._maxsize <= 0:
+        parent = self._parent
+        if parent._maxsize <= 0:
             return False
         else:
-            return self.qsize() >= self._parent._maxsize
+            return parent._qsize() >= parent._maxsize
 
     async def put(self, item: T) -> None:
         """Put an item into the queue.
@@ -465,43 +471,45 @@ class _AsyncQueueProxy(AsyncQueue[T]):
 
         This method is a coroutine.
         """
-        self._parent._check_closing()
-        async with self._parent._async_not_full:
-            self._parent._sync_mutex.acquire()
+        parent = self._parent
+        parent._check_closing()
+        async with parent._async_not_full:
+            parent._sync_mutex.acquire()
             locked = True
             try:
-                if self._parent._maxsize > 0:
+                if parent._maxsize > 0:
                     do_wait = True
                     while do_wait:
-                        do_wait = self._parent._qsize() >= self._parent._maxsize
+                        do_wait = parent._qsize() >= parent._maxsize
                         if do_wait:
                             locked = False
-                            self._parent._sync_mutex.release()
-                            await self._parent._async_not_full.wait()
-                            self._parent._sync_mutex.acquire()
+                            parent._sync_mutex.release()
+                            await parent._async_not_full.wait()
+                            parent._sync_mutex.acquire()
                             locked = True
 
-                self._parent._put_internal(item)
-                self._parent._async_not_empty.notify()
-                self._parent._notify_sync_not_empty()
+                parent._put_internal(item)
+                parent._async_not_empty.notify()
+                parent._notify_sync_not_empty()
             finally:
                 if locked:
-                    self._parent._sync_mutex.release()
+                    parent._sync_mutex.release()
 
     def put_nowait(self, item: T) -> None:
         """Put an item into the queue without blocking.
 
         If no free slot is immediately available, raise QueueFull.
         """
-        self._parent._check_closing()
-        with self._parent._sync_mutex:
-            if self._parent._maxsize > 0:
-                if self._parent._qsize() >= self._parent._maxsize:
+        parent = self._parent
+        parent._check_closing()
+        with parent._sync_mutex:
+            if parent._maxsize > 0:
+                if parent._qsize() >= parent._maxsize:
                     raise AsyncQueueFull
 
-            self._parent._put_internal(item)
-            self._parent._notify_async_not_empty(threadsafe=False)
-            self._parent._notify_sync_not_empty()
+            parent._put_internal(item)
+            parent._notify_async_not_empty(threadsafe=False)
+            parent._notify_sync_not_empty()
 
     async def get(self) -> T:
         """Remove and return an item from the queue.
@@ -510,43 +518,45 @@ class _AsyncQueueProxy(AsyncQueue[T]):
 
         This method is a coroutine.
         """
-        self._parent._check_closing()
-        async with self._parent._async_not_empty:
-            self._parent._sync_mutex.acquire()
+        parent = self._parent
+        parent._check_closing()
+        async with parent._async_not_empty:
+            parent._sync_mutex.acquire()
             locked = True
             try:
                 do_wait = True
                 while do_wait:
-                    do_wait = self._parent._qsize() == 0
+                    do_wait = parent._qsize() == 0
 
                     if do_wait:
                         locked = False
-                        self._parent._sync_mutex.release()
-                        await self._parent._async_not_empty.wait()
-                        self._parent._sync_mutex.acquire()
+                        parent._sync_mutex.release()
+                        await parent._async_not_empty.wait()
+                        parent._sync_mutex.acquire()
                         locked = True
 
-                item = self._parent._get()
-                self._parent._async_not_full.notify()
-                self._parent._notify_sync_not_full()
+                item = parent._get()
+                parent._async_not_full.notify()
+                parent._notify_sync_not_full()
                 return item
             finally:
                 if locked:
-                    self._parent._sync_mutex.release()
+                    parent._sync_mutex.release()
 
     def get_nowait(self) -> T:
         """Remove and return an item from the queue.
 
         Return an item if one is immediately available, else raise QueueEmpty.
         """
-        self._parent._check_closing()
-        with self._parent._sync_mutex:
-            if self._parent._qsize() == 0:
+        parent = self._parent
+        parent._check_closing()
+        with parent._sync_mutex:
+            if parent._qsize() == 0:
                 raise AsyncQueueEmpty
 
-            item = self._parent._get()
-            self._parent._notify_async_not_full(threadsafe=False)
-            self._parent._notify_sync_not_full()
+            item = parent._get()
+            parent._notify_async_not_full(threadsafe=False)
+            parent._notify_sync_not_full()
             return item
 
     def task_done(self) -> None:
@@ -563,14 +573,15 @@ class _AsyncQueueProxy(AsyncQueue[T]):
         Raises ValueError if called more times than there were items placed in
         the queue.
         """
-        self._parent._check_closing()
-        with self._parent._all_tasks_done:
-            if self._parent._unfinished_tasks <= 0:
+        parent = self._parent
+        parent._check_closing()
+        with parent._all_tasks_done:
+            if parent._unfinished_tasks <= 0:
                 raise ValueError("task_done() called too many times")
-            self._parent._unfinished_tasks -= 1
-            if self._parent._unfinished_tasks == 0:
-                self._parent._finished.set()
-                self._parent._all_tasks_done.notify_all()
+            parent._unfinished_tasks -= 1
+            if parent._unfinished_tasks == 0:
+                parent._finished.set()
+                parent._all_tasks_done.notify_all()
 
     async def join(self) -> None:
         """Block until all items in the queue have been gotten and processed.
@@ -580,12 +591,13 @@ class _AsyncQueueProxy(AsyncQueue[T]):
         indicate that the item was retrieved and all work on it is complete.
         When the count of unfinished tasks drops to zero, join() unblocks.
         """
+        parent = self._parent
         while True:
-            with self._parent._sync_mutex:
-                self._parent._check_closing()
-                if self._parent._unfinished_tasks == 0:
+            with parent._sync_mutex:
+                parent._check_closing()
+                if parent._unfinished_tasks == 0:
                     break
-            await self._parent._finished.wait()
+            await parent._finished.wait()
 
 
 class PriorityQueue(Queue[T]):
