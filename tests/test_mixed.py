@@ -237,6 +237,7 @@ class TestMixedMode:
         assert not q.async_q.closed
         assert not q.sync_q.closed
         q.close()
+        await q.wait_closed()
         assert q.closed
         assert q.async_q.closed
         assert q.sync_q.closed
