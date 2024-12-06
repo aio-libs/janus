@@ -6,6 +6,9 @@ Changes
 
 - Optimize internal implementation for a little speedup #699
 
+- Make not-full and not-empty notificatios faster #703
+
+
 1.1.0 (2024-10-30)
 ------------------
 
