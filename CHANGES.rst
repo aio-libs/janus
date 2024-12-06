@@ -8,6 +8,7 @@ Changes
 
 - Make not-full and not-empty notificatios faster #703
 
+- Add ``.aclose()`` async method #709
 
 1.1.0 (2024-10-30)
 ------------------

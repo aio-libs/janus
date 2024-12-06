@@ -2,6 +2,7 @@
 # to ensure the Queue locks remain stable.
 import asyncio
 import queue
+import re
 import threading
 import time
 from unittest.mock import patch
@@ -186,12 +187,10 @@ class BaseQueueTestMixin(BlockingTestMixin):
         # Test to make sure a queue task completed successfully.
         _q = self.type2test()
         q = _q.sync_q
-        try:
+        with pytest.raises(
+            ValueError, match=re.escape("task_done() called too many times")
+        ):
             q.task_done()
-        except ValueError:
-            pass
-        else:
-            pytest.fail("Did not detect task count going negative")
         _q.close()
         await _q.wait_closed()
 
@@ -203,15 +202,12 @@ class BaseQueueTestMixin(BlockingTestMixin):
         q = _q.sync_q
         self.queue_join_test(q)
         self.queue_join_test(q)
-        try:
+        with pytest.raises(
+            ValueError, match=re.escape("task_done() called too many times")
+        ):
             q.task_done()
-        except ValueError:
-            pass
-        else:
-            pytest.fail("Did not detect task count going negative")
-        finally:
-            _q.close()
-            await _q.wait_closed()
+        _q.close()
+        await _q.wait_closed()
 
     @pytest.mark.asyncio
     async def test_simple_queue(self):
@@ -227,9 +223,9 @@ class BaseQueueTestMixin(BlockingTestMixin):
     async def test_negative_timeout_raises_exception(self):
         _q = self.type2test(QUEUE_SIZE)
         q = _q.sync_q
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="timeout' must be a non-negative number"):
             q.put(1, timeout=-1)
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="timeout' must be a non-negative number"):
             q.get(1, timeout=-1)
         _q.close()
         await _q.wait_closed()

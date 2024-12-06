@@ -2,6 +2,7 @@
 
 import asyncio
 import time
+import re
 
 import pytest
 
@@ -16,8 +17,10 @@ async def close(_q):
     else:
         assert not _q._sync_mutex.locked()
 
-    _q.close()
-    await _q.wait_closed()
+    await _q.aclose()
+    assert _q.closed
+    assert _q.sync_q.closed
+    assert _q.async_q.closed
 
 
 class TestQueueBasic:
@@ -478,7 +481,10 @@ class _QueueJoinTestMixin:
     async def test_task_done_underflow(self):
         _q = self.q_class()
         q = _q.async_q
-        pytest.raises(ValueError, q.task_done)
+        with pytest.raises(
+            ValueError, match=re.escape("task_done() called too many times")
+        ):
+            q.task_done()
 
         await close(_q)
 

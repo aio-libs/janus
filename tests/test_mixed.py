@@ -1,5 +1,4 @@
 import asyncio
-import contextlib
 import threading
 
 import pytest
@@ -78,8 +77,8 @@ class TestMixedMode:
             q.sync_q.put(i)
 
         async def do_work():
-            await asyncio.sleep(1)
-            while True:
+            await asyncio.sleep(0.1)
+            while not q.async_q.empty():
                 await q.async_q.get()
                 q.async_q.task_done()
 
@@ -87,7 +86,7 @@ class TestMixedMode:
 
         async def wait_for_empty_queue():
             await q.async_q.join()
-            task.cancel()
+            await task
 
         await wait_for_empty_queue()
 
@@ -238,6 +237,7 @@ class TestMixedMode:
         assert not q.async_q.closed
         assert not q.sync_q.closed
         q.close()
+        await q.wait_closed()
         assert q.closed
         assert q.async_q.closed
         assert q.sync_q.closed
@@ -248,7 +248,7 @@ class TestMixedMode:
         q.close()
         with pytest.raises(
             RuntimeError, match="Operation on the closed queue is forbidden"
-        ), contextlib.suppress(asyncio.TimeoutError):
+        ):
             await asyncio.wait_for(q.async_q.join(), timeout=0.1)
 
         await q.wait_closed()
@@ -258,13 +258,13 @@ class TestMixedMode:
         q = janus.Queue()
         q.sync_q.put(1)
 
-        task = asyncio.ensure_future(q.async_q.join())
-        await asyncio.sleep(0.1)  # ensure tasks are blocking
+        task = asyncio.create_task(q.async_q.join())
+        await asyncio.sleep(0.01)  # ensure tasks are blocking
 
         q.close()
         with pytest.raises(
             RuntimeError, match="Operation on the closed queue is forbidden"
-        ), contextlib.suppress(asyncio.TimeoutError):
+        ):
             await asyncio.wait_for(task, timeout=0.1)
 
         await q.wait_closed()
@@ -290,7 +290,7 @@ class TestMixedMode:
 
         with pytest.raises(
             RuntimeError, match="Operation on the closed queue is forbidden"
-        ), contextlib.suppress(asyncio.TimeoutError):
+        ):
             await asyncio.wait_for(fut, timeout=0.1)
 
         await q.wait_closed()
@@ -317,7 +317,7 @@ class TestMixedMode:
 
         with pytest.raises(
             RuntimeError, match="Operation on the closed queue is forbidden"
-        ), contextlib.suppress(asyncio.TimeoutError):
+        ):
             await asyncio.wait_for(fut, timeout=0.1)
 
         await q.wait_closed()
