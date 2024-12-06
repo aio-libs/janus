@@ -137,6 +137,10 @@ class Queue(Generic[T]):
             return
         await asyncio.wait(self._pending)
 
+    async def aclose(self) -> None:
+        self.close()
+        await self.wait_closed()
+
     @property
     def closed(self) -> bool:
         return self._closing and not self._pending
