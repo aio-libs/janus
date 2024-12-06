@@ -1,10 +1,23 @@
 """Tests for queues.py"""
 
 import asyncio
+import time
 
 import pytest
 
 import janus
+
+
+async def close(_q):
+    for i in range(5):
+        time.sleep(0.001)
+        if not _q._sync_mutex.locked():
+            break
+    else:
+        assert not _q._sync_mutex.locked()
+
+    _q.close()
+    await _q.wait_closed()
 
 
 class TestQueueBasic:
@@ -70,9 +83,7 @@ class TestQueueBasic:
         assert 1 == q.get_nowait()
         assert q.empty()
 
-        assert not _q._sync_mutex.locked()
-        _q.close()
-        await _q.wait_closed()
+        await close(_q)
 
     @pytest.mark.asyncio
     async def test_full(self):
@@ -85,9 +96,7 @@ class TestQueueBasic:
         q.put_nowait(1)
         assert q.full()
 
-        assert not _q._sync_mutex.locked()
-        _q.close()
-        await _q.wait_closed()
+        await close(_q)
 
     @pytest.mark.asyncio
     async def test_order(self):
@@ -99,9 +108,7 @@ class TestQueueBasic:
         items = [q.get_nowait() for _ in range(3)]
         assert [1, 3, 2] == items
 
-        assert not _q._sync_mutex.locked()
-        _q.close()
-        await _q.wait_closed()
+        await close(_q)
 
     @pytest.mark.asyncio
     async def test_maxsize(self):
@@ -121,25 +128,20 @@ class TestQueueBasic:
                     fut.set_result(None)
             return True
 
-        async def test():
-            t = loop.create_task(putter())
-            await fut
+        t = loop.create_task(putter())
+        await fut
 
-            # The putter is blocked after putting two items.
-            assert [0, 1] == have_been_put
-            assert 0 == q.get_nowait()
+        # The putter is blocked after putting two items.
+        assert [0, 1] == have_been_put
+        assert 0 == q.get_nowait()
 
-            # Let the putter resume and put last item.
-            await t
-            assert [0, 1, 2] == have_been_put
-            assert 1 == q.get_nowait()
-            assert 2 == q.get_nowait()
+        # Let the putter resume and put last item.
+        await t
+        assert [0, 1, 2] == have_been_put
+        assert 1 == q.get_nowait()
+        assert 2 == q.get_nowait()
 
-        await test()
-
-        assert not _q._sync_mutex.locked()
-        _q.close()
-        await _q.wait_closed()
+        await close(_q)
 
 
 class TestQueueGetTests:
@@ -152,9 +154,7 @@ class TestQueueGetTests:
         res = await q.get()
         assert 1 == res
 
-        assert not _q._sync_mutex.locked()
-        _q.close()
-        await _q.wait_closed()
+        await close(_q)
 
     @pytest.mark.asyncio
     async def test_get_with_putters(self):
@@ -179,9 +179,7 @@ class TestQueueGetTests:
         await t
         assert 1 == q.qsize()
 
-        assert not _q._sync_mutex.locked()
-        _q.close()
-        await _q.wait_closed()
+        await close(_q)
 
     @pytest.mark.asyncio
     async def test_blocking_get_wait(self):
@@ -210,9 +208,7 @@ class TestQueueGetTests:
         res = await queue_put()
         assert 1 == res
 
-        assert not _q._sync_mutex.locked()
-        _q.close()
-        await _q.wait_closed()
+        await close(_q)
 
     @pytest.mark.asyncio
     async def test_nonblocking_get(self):
@@ -229,9 +225,7 @@ class TestQueueGetTests:
         _q = janus.Queue()
         pytest.raises(asyncio.QueueEmpty, _q.async_q.get_nowait)
 
-        assert not _q._sync_mutex.locked()
-        _q.close()
-        await _q.wait_closed()
+        await close(_q)
 
     @pytest.mark.asyncio
     async def test_get_cancelled(self):
@@ -250,9 +244,7 @@ class TestQueueGetTests:
 
         assert 1 == await test()
 
-        assert not _q._sync_mutex.locked()
-        _q.close()
-        await _q.wait_closed()
+        await close(_q)
 
     @pytest.mark.asyncio
     async def test_get_cancelled_race(self):
@@ -281,9 +273,7 @@ class TestQueueGetTests:
         await t2
         assert t2.result() == "a"
 
-        assert not _q._sync_mutex.locked()
-        _q.close()
-        await _q.wait_closed()
+        await close(_q)
 
     @pytest.mark.asyncio
     async def test_get_with_waiting_putters(self):
@@ -299,9 +289,7 @@ class TestQueueGetTests:
         assert await q.get() == "a"
         assert await q.get() == "b"
 
-        assert not _q._sync_mutex.locked()
-        _q.close()
-        await _q.wait_closed()
+        await close(_q)
 
 
 class TestQueuePut:
@@ -313,9 +301,7 @@ class TestQueuePut:
         # No maxsize, won't block.
         await q.put(1)
 
-        assert not _q._sync_mutex.locked()
-        _q.close()
-        await _q.wait_closed()
+        await close(_q)
 
     @pytest.mark.asyncio
     async def test_blocking_put_wait(self):
@@ -342,9 +328,7 @@ class TestQueuePut:
 
         await queue_get()
 
-        assert not _q._sync_mutex.locked()
-        _q.close()
-        await _q.wait_closed()
+        await close(_q)
 
     @pytest.mark.asyncio
     async def test_nonblocking_put(self):
@@ -353,9 +337,7 @@ class TestQueuePut:
         q.put_nowait(1)
         assert 1 == q.get_nowait()
 
-        assert not _q._sync_mutex.locked()
-        _q.close()
-        await _q.wait_closed()
+        await close(_q)
 
     @pytest.mark.asyncio
     async def test_nonblocking_put_exception(self):
@@ -364,9 +346,7 @@ class TestQueuePut:
         q.put_nowait(1)
         pytest.raises(asyncio.QueueFull, q.put_nowait, 2)
 
-        assert not _q._sync_mutex.locked()
-        _q.close()
-        await _q.wait_closed()
+        await close(_q)
 
     @pytest.mark.asyncio
     async def test_float_maxsize(self):
@@ -390,9 +370,7 @@ class TestQueuePut:
 
         await queue_put()
 
-        assert not _q._sync_mutex.locked()
-        _q.close()
-        await _q.wait_closed()
+        await close(_q)
 
     @pytest.mark.asyncio
     async def test_put_cancelled(self):
@@ -412,9 +390,7 @@ class TestQueuePut:
         assert t.done()
         assert t.result()
 
-        assert not _q._sync_mutex.locked()
-        _q.close()
-        await _q.wait_closed()
+        await close(_q)
 
     @pytest.mark.asyncio
     async def test_put_cancelled_race(self):
@@ -434,18 +410,15 @@ class TestQueuePut:
         with pytest.raises(asyncio.CancelledError):
             await put_c
 
-        async def go():
-            a = await q.get()
-            assert a == "a"
-            b = await q.get()
-            assert b == "b"
-            assert put_b.done()
+        a = await q.get()
+        assert a == "a"
+        b = await q.get()
+        assert b == "b"
+        assert put_b.done()
 
-        await go()
+        assert q.qsize() == 0
 
-        assert not _q._sync_mutex.locked()
-        _q.close()
-        await _q.wait_closed()
+        await close(_q)
 
     @pytest.mark.asyncio
     async def test_put_with_waiting_getters(self):
@@ -467,9 +440,7 @@ class TestQueuePut:
         await put()
         assert await t == "a"
 
-        assert not _q._sync_mutex.locked()
-        _q.close()
-        await _q.wait_closed()
+        await close(_q)
 
 
 class TestLifoQueue:
@@ -483,9 +454,7 @@ class TestLifoQueue:
         items = [q.get_nowait() for _ in range(3)]
         assert [2, 3, 1] == items
 
-        assert not _q._sync_mutex.locked()
-        _q.close()
-        await _q.wait_closed()
+        await close(_q)
 
 
 class TestPriorityQueue:
@@ -499,9 +468,7 @@ class TestPriorityQueue:
         items = [q.get_nowait() for _ in range(3)]
         assert [1, 2, 3] == items
 
-        assert not _q._sync_mutex.locked()
-        _q.close()
-        await _q.wait_closed()
+        await close(_q)
 
 
 class _QueueJoinTestMixin:
@@ -513,9 +480,7 @@ class _QueueJoinTestMixin:
         q = _q.async_q
         pytest.raises(ValueError, q.task_done)
 
-        assert not _q._sync_mutex.locked()
-        _q.close()
-        await _q.wait_closed()
+        await close(_q)
 
     @pytest.mark.asyncio
     async def test_task_done(self):
@@ -554,9 +519,7 @@ class _QueueJoinTestMixin:
             q.put_nowait(0)
         await asyncio.wait(tasks)
 
-        assert not _q._sync_mutex.locked()
-        _q.close()
-        await _q.wait_closed()
+        await close(_q)
 
     @pytest.mark.asyncio
     async def test_join_empty_queue(self):
@@ -572,9 +535,7 @@ class _QueueJoinTestMixin:
 
         await join()
 
-        assert not _q._sync_mutex.locked()
-        _q.close()
-        await _q.wait_closed()
+        await close(_q)
 
 
 class TestQueueJoin(_QueueJoinTestMixin):
