@@ -79,7 +79,9 @@ class Queue(Generic[T]):
 
         self._sync_mutex = threading.Lock()
         self._sync_not_empty = threading.Condition(self._sync_mutex)
+        self._sync_not_empty_waiting = 0
         self._sync_not_full = threading.Condition(self._sync_mutex)
+        self._sync_not_full_waiting = 0
         self._all_tasks_done = threading.Condition(self._sync_mutex)
 
         self._async_mutex = asyncio.Lock()
@@ -87,7 +89,9 @@ class Queue(Generic[T]):
             # Workaround for Python 3.10 bug, see #358:
             getattr(self._async_mutex, "_get_loop", lambda: None)()
         self._async_not_empty = asyncio.Condition(self._async_mutex)
+        self._async_not_empty_waiting = 0
         self._async_not_full = asyncio.Condition(self._async_mutex)
+        self._async_not_full_waiting = 0
         self._finished = asyncio.Event()
         self._finished.set()
 
@@ -340,7 +344,11 @@ class _SyncQueueProxy(SyncQueue[T]):
                         raise SyncQueueFull
                 elif timeout is None:
                     while parent._qsize() >= parent._maxsize:
-                        parent._sync_not_full.wait()
+                        parent._sync_not_full_waiting += 1
+                        try:
+                            parent._sync_not_full.wait()
+                        finally:
+                            parent._sync_not_full_waiting -= 1
                 elif timeout < 0:
                     raise ValueError("'timeout' must be a non-negative number")
                 else:
@@ -350,10 +358,16 @@ class _SyncQueueProxy(SyncQueue[T]):
                         remaining = endtime - time()
                         if remaining <= 0.0:
                             raise SyncQueueFull
-                        parent._sync_not_full.wait(remaining)
+                        parent._sync_not_full_waiting += 1
+                        try:
+                            parent._sync_not_full.wait(remaining)
+                        finally:
+                            parent._sync_not_full_waiting -= 1
             parent._put_internal(item)
-            parent._sync_not_empty.notify()
-            parent._notify_async_not_empty(threadsafe=True)
+            if parent._sync_not_empty_waiting:
+                parent._sync_not_empty.notify()
+            if parent._async_not_empty_waiting:
+                parent._notify_async_not_empty(threadsafe=True)
 
     def get(self, block: bool = True, timeout: OptFloat = None) -> T:
         """Remove and return an item from the queue.
@@ -374,7 +388,11 @@ class _SyncQueueProxy(SyncQueue[T]):
                     raise SyncQueueEmpty
             elif timeout is None:
                 while not parent._qsize():
-                    parent._sync_not_empty.wait()
+                    parent._sync_not_empty_waiting += 1
+                    try:
+                        parent._sync_not_empty.wait()
+                    finally:
+                        parent._sync_not_empty_waiting -= 1
             elif timeout < 0:
                 raise ValueError("'timeout' must be a non-negative number")
             else:
@@ -384,10 +402,16 @@ class _SyncQueueProxy(SyncQueue[T]):
                     remaining = endtime - time()
                     if remaining <= 0.0:
                         raise SyncQueueEmpty
-                    parent._sync_not_empty.wait(remaining)
+                    parent._sync_not_empty_waiting += 1
+                    try:
+                        parent._sync_not_empty.wait(remaining)
+                    finally:
+                        parent._sync_not_empty_waiting -= 1
             item = parent._get()
-            parent._sync_not_full.notify()
-            parent._notify_async_not_full(threadsafe=True)
+            if parent._sync_not_full_waiting:
+                parent._sync_not_full.notify()
+            if parent._async_not_full_waiting:
+                parent._notify_async_not_full(threadsafe=True)
             return item
 
     def put_nowait(self, item: T) -> None:
@@ -471,13 +495,19 @@ class _AsyncQueueProxy(AsyncQueue[T]):
                         if do_wait:
                             locked = False
                             parent._sync_mutex.release()
-                            await parent._async_not_full.wait()
+                            parent._async_not_full_waiting += 1
+                            try:
+                                await parent._async_not_full.wait()
+                            finally:
+                                parent._async_not_full_waiting -= 1
                             parent._sync_mutex.acquire()
                             locked = True
 
                 parent._put_internal(item)
-                parent._async_not_empty.notify()
-                parent._notify_sync_not_empty()
+                if parent._async_not_empty_waiting:
+                    parent._async_not_empty.notify()
+                if parent._sync_not_empty_waiting:
+                    parent._notify_sync_not_empty()
             finally:
                 if locked:
                     parent._sync_mutex.release()
@@ -495,8 +525,10 @@ class _AsyncQueueProxy(AsyncQueue[T]):
                     raise AsyncQueueFull
 
             parent._put_internal(item)
-            parent._notify_async_not_empty(threadsafe=False)
-            parent._notify_sync_not_empty()
+            if parent._async_not_empty_waiting:
+                parent._notify_async_not_empty(threadsafe=False)
+            if parent._sync_not_empty_waiting:
+                parent._notify_sync_not_empty()
 
     async def get(self) -> T:
         """Remove and return an item from the queue.
@@ -518,13 +550,19 @@ class _AsyncQueueProxy(AsyncQueue[T]):
                     if do_wait:
                         locked = False
                         parent._sync_mutex.release()
-                        await parent._async_not_empty.wait()
+                        parent._async_not_empty_waiting += 1
+                        try:
+                            await parent._async_not_empty.wait()
+                        finally:
+                            parent._async_not_empty_waiting -= 1
                         parent._sync_mutex.acquire()
                         locked = True
 
                 item = parent._get()
-                parent._async_not_full.notify()
-                parent._notify_sync_not_full()
+                if parent._async_not_full_waiting:
+                    parent._async_not_full.notify()
+                if parent._sync_not_full_waiting:
+                    parent._notify_sync_not_full()
                 return item
             finally:
                 if locked:
@@ -542,8 +580,10 @@ class _AsyncQueueProxy(AsyncQueue[T]):
                 raise AsyncQueueEmpty
 
             item = parent._get()
-            parent._notify_async_not_full(threadsafe=False)
-            parent._notify_sync_not_full()
+            if parent._async_not_full_waiting:
+                parent._notify_async_not_full(threadsafe=False)
+            if parent._sync_not_full_waiting:
+                parent._notify_sync_not_full()
             return item
 
     def task_done(self) -> None:
