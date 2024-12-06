@@ -176,51 +176,53 @@ class Queue(Generic[T]):
         self._unfinished_tasks += 1
         self._finished.clear()
 
+    def _sync_not_empty_notifier(self):
+        with self._sync_mutex:
+            self._sync_not_empty.notify()
+
     def _notify_sync_not_empty(self) -> None:
-        def f() -> None:
-            with self._sync_mutex:
-                self._sync_not_empty.notify()
-
-        self._loop.run_in_executor(None, f)
-
-    def _notify_sync_not_full(self) -> None:
-        def f() -> None:
-            with self._sync_mutex:
-                self._sync_not_full.notify()
-
-        fut = asyncio.ensure_future(self._loop.run_in_executor(None, f))
+        fut = self._loop.run_in_executor(None, self._sync_not_empty_notifier)
         fut.add_done_callback(self._pending.discard)
         self._pending.add(fut)
 
+    def _sync_not_full_notifier(self) -> None:
+        with self._sync_mutex:
+            self._sync_not_full.notify()
+
+    def _notify_sync_not_full(self) -> None:
+        fut = self._loop.run_in_executor(None, self._sync_not_full_notifier)
+        fut.add_done_callback(self._pending.discard)
+        self._pending.add(fut)
+
+    async def _async_not_empty_notifier(self) -> None:
+        async with self._async_mutex:
+            self._async_not_empty.notify()
+
+    def _make_async_not_empty_notifier(self) -> None:
+        task = self._loop.create_task(self._async_not_empty_notifier())
+        task.add_done_callback(self._pending.discard)
+        self._pending.add(task)
+
     def _notify_async_not_empty(self, *, threadsafe: bool) -> None:
-        async def f() -> None:
-            async with self._async_mutex:
-                self._async_not_empty.notify()
-
-        def task_maker() -> None:
-            task = self._loop.create_task(f())
-            task.add_done_callback(self._pending.discard)
-            self._pending.add(task)
-
         if threadsafe:
-            self._call_soon_threadsafe(task_maker)
+            self._call_soon_threadsafe(self._make_async_not_empty_notifier)
         else:
-            self._call_soon(task_maker)
+            self._call_soon(self._make_async_not_empty_notifier)
+
+    async def _async_not_full_notifier(self) -> None:
+        async with self._async_mutex:
+            self._async_not_full.notify()
+
+    def _make_async_not_full_notifier(self) -> None:
+        task = self._loop.create_task(self._async_not_full_notifier())
+        task.add_done_callback(self._pending.discard)
+        self._pending.add(task)
 
     def _notify_async_not_full(self, *, threadsafe: bool) -> None:
-        async def f() -> None:
-            async with self._async_mutex:
-                self._async_not_full.notify()
-
-        def task_maker() -> None:
-            task = self._loop.create_task(f())
-            task.add_done_callback(self._pending.discard)
-            self._pending.add(task)
-
         if threadsafe:
-            self._call_soon_threadsafe(task_maker)
+            self._call_soon_threadsafe(self._make_async_not_full_notifier)
         else:
-            self._call_soon(task_maker)
+            self._call_soon(self._make_async_not_full_notifier)
 
     def _check_closing(self) -> None:
         if self._closing:
