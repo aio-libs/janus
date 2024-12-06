@@ -443,6 +443,9 @@ class TestQueuePut:
 
         await go()
 
+        # wait for tasks termination
+        await asyncio.gather(put_a, put_b, put_c, return_exceptions=True)
+
         assert not _q._sync_mutex.locked()
         _q.close()
         await _q.wait_closed()
