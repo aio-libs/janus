@@ -176,7 +176,7 @@ class Queue(Generic[T]):
         self._unfinished_tasks += 1
         self._finished.clear()
 
-    def _sync_not_empty_notifier(self):
+    def _sync_not_empty_notifier(self) -> None:
         with self._sync_mutex:
             self._sync_not_empty.notify()
 
