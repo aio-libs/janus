@@ -434,14 +434,13 @@ class TestQueuePut:
         with pytest.raises(asyncio.CancelledError):
             await put_c
 
-        async def go():
-            a = await q.get()
-            assert a == "a"
-            b = await q.get()
-            assert b == "b"
-            assert put_b.done()
+        a = await q.get()
+        assert a == "a"
+        b = await q.get()
+        assert b == "b"
+        assert put_b.done()
 
-        await go()
+        assert q.qsize() == 0
 
         # wait for tasks termination
         await asyncio.gather(put_a, put_b, put_c, return_exceptions=True)
