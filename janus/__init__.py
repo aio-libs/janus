@@ -207,7 +207,7 @@ class Queue(Generic[T]):
         if threadsafe:
             self._call_soon_threadsafe(self._make_async_not_empty_notifier)
         else:
-            self._call_soon(self._make_async_not_empty_notifier)
+            self._make_async_not_empty_notifier()
 
     async def _async_not_full_notifier(self) -> None:
         async with self._async_mutex:
@@ -222,7 +222,7 @@ class Queue(Generic[T]):
         if threadsafe:
             self._call_soon_threadsafe(self._make_async_not_full_notifier)
         else:
-            self._call_soon(self._make_async_not_full_notifier)
+            self._make_async_not_full_notifier()
 
     def _check_closing(self) -> None:
         if self._closing:
