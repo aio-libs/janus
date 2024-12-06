@@ -92,7 +92,7 @@ class Queue(Generic[T]):
         self._finished.set()
 
         self._closing = False
-        self._pending: set[asyncio.Future[Any]] = set()
+        self._pending: deque[asyncio.Future[Any]] = deque()
 
         def checked_call_soon_threadsafe(
             callback: Callable[..., None], *args: Any
@@ -182,8 +182,8 @@ class Queue(Generic[T]):
 
     def _notify_sync_not_empty(self) -> None:
         fut = self._loop.run_in_executor(None, self._sync_not_empty_notifier)
-        fut.add_done_callback(self._pending.discard)
-        self._pending.add(fut)
+        fut.add_done_callback(self._pending.remove)
+        self._pending.append(fut)
 
     def _sync_not_full_notifier(self) -> None:
         with self._sync_mutex:
@@ -191,8 +191,8 @@ class Queue(Generic[T]):
 
     def _notify_sync_not_full(self) -> None:
         fut = self._loop.run_in_executor(None, self._sync_not_full_notifier)
-        fut.add_done_callback(self._pending.discard)
-        self._pending.add(fut)
+        fut.add_done_callback(self._pending.remove)
+        self._pending.append(fut)
 
     async def _async_not_empty_notifier(self) -> None:
         async with self._async_mutex:
@@ -200,8 +200,8 @@ class Queue(Generic[T]):
 
     def _make_async_not_empty_notifier(self) -> None:
         task = self._loop.create_task(self._async_not_empty_notifier())
-        task.add_done_callback(self._pending.discard)
-        self._pending.add(task)
+        task.add_done_callback(self._pending.remove)
+        self._pending.append(task)
 
     def _notify_async_not_empty(self, *, threadsafe: bool) -> None:
         if threadsafe:
@@ -215,8 +215,8 @@ class Queue(Generic[T]):
 
     def _make_async_not_full_notifier(self) -> None:
         task = self._loop.create_task(self._async_not_full_notifier())
-        task.add_done_callback(self._pending.discard)
-        self._pending.add(task)
+        task.add_done_callback(self._pending.remove)
+        self._pending.append(task)
 
     def _notify_async_not_full(self, *, threadsafe: bool) -> None:
         if threadsafe:
