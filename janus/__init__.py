@@ -7,6 +7,7 @@ from collections import deque
 from heapq import heappop, heappush
 from queue import Empty as SyncQueueEmpty
 from queue import Full as SyncQueueFull
+from time import monotonic
 from typing import Any, Callable, Generic, Optional, Protocol, TypeVar
 
 __version__ = "1.1.0"
@@ -24,7 +25,14 @@ __all__ = (
 )
 
 
+if sys.version_info >= (3, 10):
+    from typing import ParamSpec
+else:
+    from typing_extensions import ParamSpec
+
+
 T = TypeVar("T")
+P = ParamSpec("P")
 OptFloat = Optional[float]
 
 
@@ -68,9 +76,13 @@ class AsyncQueue(BaseQueue[T], Protocol[T]):
     async def join(self) -> None: ...
 
 
+_global_lock = threading.Lock()
+
+
 class Queue(Generic[T]):
+    _loop: Optional[asyncio.AbstractEventLoop] = None
+
     def __init__(self, maxsize: int = 0) -> None:
-        self._loop = asyncio.get_running_loop()
         self._maxsize = maxsize
 
         self._init(maxsize)
@@ -94,25 +106,27 @@ class Queue(Generic[T]):
         self._closing = False
         self._pending: deque[asyncio.Future[Any]] = deque()
 
-        def checked_call_soon_threadsafe(
-            callback: Callable[..., None], *args: Any
-        ) -> None:
-            try:
-                self._loop.call_soon_threadsafe(callback, *args)
-            except RuntimeError:
-                # swallowing agreed in #2
-                pass
-
-        self._call_soon_threadsafe = checked_call_soon_threadsafe
-
-        def checked_call_soon(callback: Callable[..., None], *args: Any) -> None:
-            if not self._loop.is_closed():
-                self._loop.call_soon(callback, *args)
-
-        self._call_soon = checked_call_soon
-
         self._sync_queue = _SyncQueueProxy(self)
         self._async_queue = _AsyncQueueProxy(self)
+
+    def _call_soon_threadsafe(
+        self, callback: Callable[P, None], *args: P.args, **kwargs: P.kwargs
+    ) -> None:
+        if self._loop is None:
+            # async API didn't accessed yet, nothing to notify
+            return
+        try:
+            self._loop.call_soon_threadsafe(callback, *args)
+        except RuntimeError:
+            # swallowing agreed in #2
+            pass
+
+    def _get_loop(self) -> asyncio.AbstractEventLoop:
+        loop = asyncio.get_running_loop()
+        assert self._loop is not None  # nosec: B101
+        if loop is not self._loop:
+            raise RuntimeError(f"{self!r} is bound to a different event loop")
+        return loop
 
     def close(self) -> None:
         with self._sync_mutex:
@@ -155,6 +169,14 @@ class Queue(Generic[T]):
 
     @property
     def async_q(self) -> "_AsyncQueueProxy[T]":
+        loop = asyncio.get_running_loop()
+
+        if self._loop is None:
+            with _global_lock:
+                if self._loop is None:
+                    self._loop = loop
+        if loop is not self._loop:
+            raise RuntimeError(f"{self!r} is bound to a different event loop")
         return self._async_queue
 
     # Override these methods to implement other queue organizations
@@ -185,7 +207,7 @@ class Queue(Generic[T]):
             self._sync_not_empty.notify()
 
     def _notify_sync_not_empty(self) -> None:
-        fut = self._loop.run_in_executor(None, self._sync_not_empty_notifier)
+        fut = self._get_loop().run_in_executor(None, self._sync_not_empty_notifier)
         fut.add_done_callback(self._pending.remove)
         self._pending.append(fut)
 
@@ -194,7 +216,7 @@ class Queue(Generic[T]):
             self._sync_not_full.notify()
 
     def _notify_sync_not_full(self) -> None:
-        fut = self._loop.run_in_executor(None, self._sync_not_full_notifier)
+        fut = self._get_loop().run_in_executor(None, self._sync_not_full_notifier)
         fut.add_done_callback(self._pending.remove)
         self._pending.append(fut)
 
@@ -203,6 +225,8 @@ class Queue(Generic[T]):
             self._async_not_empty.notify()
 
     def _make_async_not_empty_notifier(self) -> None:
+        # self._loop is set if called by q._call_soon_threadsafe()
+        assert self._loop is not None  # nosec: B101
         task = self._loop.create_task(self._async_not_empty_notifier())
         task.add_done_callback(self._pending.remove)
         self._pending.append(task)
@@ -218,6 +242,8 @@ class Queue(Generic[T]):
             self._async_not_full.notify()
 
     def _make_async_not_full_notifier(self) -> None:
+        # self._loop is set if called by q._call_soon_threadsafe()
+        assert self._loop is not None  # nosec: B101
         task = self._loop.create_task(self._async_not_full_notifier())
         task.add_done_callback(self._pending.remove)
         self._pending.append(task)
@@ -272,7 +298,7 @@ class _SyncQueueProxy(SyncQueue[T]):
                 if unfinished < 0:
                     raise ValueError("task_done() called too many times")
                 parent._all_tasks_done.notify_all()
-                parent._loop.call_soon_threadsafe(parent._finished.set)
+                parent._call_soon_threadsafe(parent._finished.set)
             parent._unfinished_tasks = unfinished
 
     def join(self) -> None:
@@ -348,10 +374,9 @@ class _SyncQueueProxy(SyncQueue[T]):
                 elif timeout < 0:
                     raise ValueError("'timeout' must be a non-negative number")
                 else:
-                    time = parent._loop.time
-                    endtime = time() + timeout
+                    endtime = monotonic() + timeout
                     while parent._qsize() >= parent._maxsize:
-                        remaining = endtime - time()
+                        remaining = endtime - monotonic()
                         if remaining <= 0.0:
                             raise SyncQueueFull
                         parent._sync_not_full.wait(remaining)
@@ -382,10 +407,9 @@ class _SyncQueueProxy(SyncQueue[T]):
             elif timeout < 0:
                 raise ValueError("'timeout' must be a non-negative number")
             else:
-                time = parent._loop.time
-                endtime = time() + timeout
+                endtime = monotonic() + timeout
                 while not parent._qsize():
-                    remaining = endtime - time()
+                    remaining = endtime - monotonic()
                     if remaining <= 0.0:
                         raise SyncQueueEmpty
                     parent._sync_not_empty.wait(remaining)
