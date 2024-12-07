@@ -412,7 +412,14 @@ class TestFailingQueue(BlockingTestMixin):
         # we are pacthing loop to follow setUp/tearDown agreement
         with patch.object(loop, "call_soon_threadsafe") as func:
             func.side_effect = RuntimeError()
-            q.put_nowait(1)
+            task = loop.create_task(_q.async_q.get())
+            await asyncio.sleep(0)
+            try:
+                q.put_nowait(1)
+            finally:
+                task.cancel()
+                with pytest.raises(asyncio.CancelledError):
+                    await task
             assert func.call_count == 1
         _q.close()
         await _q.wait_closed()
