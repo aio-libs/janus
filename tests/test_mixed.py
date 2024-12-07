@@ -322,7 +322,6 @@ class TestMixedMode:
 
         await q.wait_closed()
 
-
     @pytest.mark.asyncio
     async def test_sync_get_notifies_async_not_full(self):
         loop = asyncio.get_running_loop()
