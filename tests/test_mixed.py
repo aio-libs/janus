@@ -321,3 +321,34 @@ class TestMixedMode:
             await asyncio.wait_for(fut, timeout=0.1)
 
         await q.wait_closed()
+
+    @pytest.mark.asyncio
+    async def test_sync_get_notifies_async_not_full(self):
+        loop = asyncio.get_running_loop()
+        q = janus.Queue(1)
+        ev = asyncio.Event()
+
+        vals = []
+
+        async def fill_queue():
+            await q.async_q.put(1)
+            ev.set()
+            await q.async_q.put(2)  # blocked here
+            val = await q.async_q.get()
+            vals.append(val)
+
+        task = asyncio.create_task(fill_queue())
+        await ev.wait()
+
+        def sync_get():
+            val = q.sync_q.get()
+            vals.append(val)
+            val = q.sync_q.get()
+            vals.append(val)
+            q.sync_q.put(3)
+
+        await loop.run_in_executor(None, sync_get)
+        await task
+        assert vals == [1, 2, 3]
+
+        await q.aclose()
