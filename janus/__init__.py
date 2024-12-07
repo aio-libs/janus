@@ -125,6 +125,17 @@ class Queue(Generic[T]):
             # swallowing agreed in #2
             pass
 
+    def _pin_loop(self) -> asyncio.AbstractEventLoop:
+        loop = asyncio.get_running_loop()
+
+        if self._loop is None:
+            with _global_lock:
+                if self._loop is None:
+                    self._loop = loop
+        if loop is not self._loop:
+            raise RuntimeError(f"{self!r} is bound to a different event loop")
+        return loop
+
     def _get_loop(self) -> asyncio.AbstractEventLoop:
         loop = asyncio.get_running_loop()
         assert self._loop is not None  # nosec: B101
@@ -133,6 +144,7 @@ class Queue(Generic[T]):
         return loop
 
     def close(self) -> None:
+        self._pin_loop()
         with self._sync_mutex:
             self._closing = True
             for fut in self._pending:
@@ -141,6 +153,7 @@ class Queue(Generic[T]):
             self._all_tasks_done.notify_all()  # unblocks all sync_q.join()
 
     async def wait_closed(self) -> None:
+        self._pin_loop()
         # should be called from loop after close().
         # Nobody should put/get at this point,
         # so lock acquiring is not required
@@ -173,14 +186,6 @@ class Queue(Generic[T]):
 
     @property
     def async_q(self) -> "_AsyncQueueProxy[T]":
-        loop = asyncio.get_running_loop()
-
-        if self._loop is None:
-            with _global_lock:
-                if self._loop is None:
-                    self._loop = loop
-        if loop is not self._loop:
-            raise RuntimeError(f"{self!r} is bound to a different event loop")
         return self._async_queue
 
     # Override these methods to implement other queue organizations
@@ -470,24 +475,33 @@ class _AsyncQueueProxy(AsyncQueue[T]):
 
     @property
     def closed(self) -> bool:
-        return self._parent.closed
+        parent = self._parent
+        parent._pin_loop()
+        return parent.closed
 
     def qsize(self) -> int:
         """Number of items in the queue."""
-        return self._parent._qsize()
+        parent = self._parent
+        parent._pin_loop()
+        return parent._qsize()
 
     @property
     def unfinished_tasks(self) -> int:
         """Return the number of unfinished tasks."""
-        return self._parent._unfinished_tasks
+        parent = self._parent
+        parent._pin_loop()
+        return parent._unfinished_tasks
 
     @property
     def maxsize(self) -> int:
         """Number of items allowed in the queue."""
-        return self._parent._maxsize
+        parent = self._parent
+        parent._pin_loop()
+        return parent._maxsize
 
     def empty(self) -> bool:
         """Return True if the queue is empty, False otherwise."""
+        parent._pin_loop()
         return self.qsize() == 0
 
     def full(self) -> bool:
@@ -497,6 +511,7 @@ class _AsyncQueueProxy(AsyncQueue[T]):
         then full() is never True.
         """
         parent = self._parent
+        parent._pin_loop()
         if parent._maxsize <= 0:
             return False
         else:
@@ -515,6 +530,7 @@ class _AsyncQueueProxy(AsyncQueue[T]):
         async with parent._async_not_full:
             parent._sync_mutex.acquire()
             locked = True
+            loop = parent._pin_loop()
             try:
                 if parent._maxsize > 0:
                     do_wait = True
@@ -548,6 +564,7 @@ class _AsyncQueueProxy(AsyncQueue[T]):
         parent = self._parent
         parent._check_closing()
         with parent._sync_mutex:
+            parent._pin_loop()
             if parent._maxsize > 0:
                 if parent._qsize() >= parent._maxsize:
                     raise AsyncQueueFull
@@ -570,6 +587,7 @@ class _AsyncQueueProxy(AsyncQueue[T]):
         async with parent._async_not_empty:
             parent._sync_mutex.acquire()
             locked = True
+            parent._pin_loop()
             try:
                 do_wait = True
                 while do_wait:
@@ -607,6 +625,8 @@ class _AsyncQueueProxy(AsyncQueue[T]):
             if parent._qsize() == 0:
                 raise AsyncQueueEmpty
 
+            parent._pin_loop()
+
             item = parent._get()
             if parent._async_not_full_waiting:
                 parent._notify_async_not_full(threadsafe=False)
@@ -633,6 +653,7 @@ class _AsyncQueueProxy(AsyncQueue[T]):
         with parent._all_tasks_done:
             if parent._unfinished_tasks <= 0:
                 raise ValueError("task_done() called too many times")
+            parent._pin_loop()
             parent._unfinished_tasks -= 1
             if parent._unfinished_tasks == 0:
                 parent._finished.set()
@@ -650,6 +671,7 @@ class _AsyncQueueProxy(AsyncQueue[T]):
         while True:
             with parent._sync_mutex:
                 parent._check_closing()
+                parent._pin_loop()
                 if parent._unfinished_tasks == 0:
                     break
             await parent._finished.wait()
