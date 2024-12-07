@@ -10,6 +10,8 @@ Changes
 
 - Add ``.aclose()`` async method #709
 
+- Reduce notifications for a minor speedup #704
+
 1.1.0 (2024-10-30)
 ------------------
 
