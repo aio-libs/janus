@@ -1,4 +1,5 @@
 import asyncio
+import sys
 import threading
 
 from concurrent.futures import ThreadPoolExecutor
@@ -9,9 +10,29 @@ import janus
 
 
 class TestMixedMode:
+    @pytest.mark.skipif(
+        sys.version_info >= (3, 10),
+        reason="Python 3.10+ supports delayed initialization",
+    )
     def test_ctor_noloop(self):
         with pytest.raises(RuntimeError):
             janus.Queue()
+
+    @pytest.mark.asyncio
+    async def test_get_loop_ok(self):
+        q = janus.Queue()
+        loop = asyncio.get_running_loop()
+        assert q._get_loop() is loop
+        assert q._loop is loop
+
+    @pytest.mark.asyncio
+    async def test_get_loop_different_loop(self):
+        q = janus.Queue()
+        # emulate binding another loop
+        loop = q._loop = asyncio.new_event_loop()
+        with pytest.raises(RuntimeError, match="is bound to a different event loop"):
+            q._get_loop()
+        loop.close()
 
     @pytest.mark.asyncio
     async def test_maxsize(self):
@@ -349,10 +370,7 @@ class TestMixedMode:
         loop = asyncio.get_running_loop()
         q = janus.Queue()
 
-        tasks = [
-            loop.create_task(q.async_q.get())
-            for _ in range(4)
-        ]
+        tasks = [loop.create_task(q.async_q.get()) for _ in range(4)]
 
         while q._async_not_empty_waiting != 4:
             await asyncio.sleep(0)
@@ -395,10 +413,7 @@ class TestMixedMode:
         q.sync_q.put_nowait(1)
         q.sync_q.put_nowait(2)
 
-        tasks = [
-            loop.create_task(q.async_q.put(object()))
-            for _ in range(4)
-        ]
+        tasks = [loop.create_task(q.async_q.put(object())) for _ in range(4)]
 
         while q._async_not_full_waiting != 4:
             await asyncio.sleep(0)
