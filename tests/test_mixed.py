@@ -7,10 +7,6 @@ import janus
 
 
 class TestMixedMode:
-    def test_ctor_noloop(self):
-        with pytest.raises(RuntimeError):
-            janus.Queue()
-
     @pytest.mark.asyncio
     async def test_maxsize(self):
         q = janus.Queue(5)

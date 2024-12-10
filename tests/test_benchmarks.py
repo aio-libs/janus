@@ -9,11 +9,7 @@ else:
 
 
 def test_bench_sync_put_async_get(benchmark):
-    q: janus.Queue
-
-    async def init():
-        nonlocal q
-        q = janus.Queue()
+    q = janus.Queue()
 
     def threaded():
         for i in range(5):
@@ -34,8 +30,6 @@ def test_bench_sync_put_async_get(benchmark):
         await q.wait_closed()
 
     with Runner(debug=True) as runner:
-        runner.run(init())
-
         @benchmark
         def _run():
             runner.run(go())
@@ -44,11 +38,7 @@ def test_bench_sync_put_async_get(benchmark):
 
 
 def test_bench_sync_put_async_join(benchmark):
-    q: janus.Queue
-
-    async def init():
-        nonlocal q
-        q = janus.Queue()
+    q = janus.Queue()
 
     async def go():
         for i in range(100):
@@ -71,8 +61,6 @@ def test_bench_sync_put_async_join(benchmark):
         await q.wait_closed()
 
     with Runner(debug=True) as runner:
-        runner.run(init())
-
         @benchmark
         def _run():
             runner.run(go())
@@ -81,11 +69,7 @@ def test_bench_sync_put_async_join(benchmark):
 
 
 def test_bench_async_put_sync_get(benchmark):
-    q: janus.Queue
-
-    async def init():
-        nonlocal q
-        q = janus.Queue()
+    q = janus.Queue()
 
     def threaded():
         for i in range(5):
@@ -106,8 +90,6 @@ def test_bench_async_put_sync_get(benchmark):
         await q.wait_closed()
 
     with Runner(debug=True) as runner:
-        runner.run(init())
-
         @benchmark
         def _run():
             runner.run(go())
@@ -116,11 +98,7 @@ def test_bench_async_put_sync_get(benchmark):
 
 
 def test_sync_join_async_done(benchmark):
-    q: janus.Queue
-
-    async def init():
-        nonlocal q
-        q = janus.Queue()
+    q = janus.Queue()
 
     def threaded():
         for i in range(5):
@@ -143,8 +121,6 @@ def test_sync_join_async_done(benchmark):
         await q.wait_closed()
 
     with Runner(debug=True) as runner:
-        runner.run(init())
-
         @benchmark
         def _run():
             runner.run(go())
