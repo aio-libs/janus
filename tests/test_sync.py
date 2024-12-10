@@ -3,6 +3,7 @@
 import asyncio
 import queue
 import re
+import sys
 import threading
 import time
 from unittest.mock import patch
@@ -425,6 +426,10 @@ class TestFailingQueue(BlockingTestMixin):
         await _q.wait_closed()
 
 
+@pytest.mark.skipif(
+    sys.version_info >= (3, 10),
+    reason="Python 3.10+ is required",
+)
 def test_sync_only_api():
     q = janus.Queue()
     q.sync_q.put(1)
