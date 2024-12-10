@@ -423,3 +423,9 @@ class TestFailingQueue(BlockingTestMixin):
             assert func.call_count == 1
         _q.close()
         await _q.wait_closed()
+
+
+def test_sync_only_api():
+    q = janus.Queue()
+    q.sync_q.put(1)
+    assert q.sync_q.get() == 1
