@@ -1,6 +1,8 @@
 import asyncio
 import threading
 
+from concurrent.futures import ThreadPoolExecutor
+
 import pytest
 
 import janus
@@ -317,3 +319,91 @@ class TestMixedMode:
             await asyncio.wait_for(fut, timeout=0.1)
 
         await q.wait_closed()
+
+    @pytest.mark.asyncio
+    async def test_put_notifies_sync_not_empty(self):
+        loop = asyncio.get_running_loop()
+        q = janus.Queue()
+
+        with ThreadPoolExecutor(4) as executor:
+            for _ in range(4):
+                executor.submit(q.sync_q.get)
+
+            while q._sync_not_empty_waiting != 4:
+                await asyncio.sleep(0.001)
+
+            q.sync_q.put_nowait(1)
+            q.async_q.put_nowait(2)
+            await loop.run_in_executor(executor, q.sync_q.put, 3)
+            await q.async_q.put(4)
+
+        assert q.sync_q.empty()
+        await q.aclose()
+
+    @pytest.mark.asyncio
+    async def test_put_notifies_async_not_empty(self):
+        loop = asyncio.get_running_loop()
+        q = janus.Queue()
+
+        tasks = [
+            loop.create_task(q.async_q.get())
+            for _ in range(4)
+        ]
+
+        while q._async_not_empty_waiting != 4:
+            await asyncio.sleep(0)
+
+        q.sync_q.put_nowait(1)
+        q.async_q.put_nowait(2)
+        await loop.run_in_executor(None, q.sync_q.put, 3)
+        await q.async_q.put(4)
+
+        await asyncio.gather(*tasks)
+        assert q.sync_q.empty()
+        await q.aclose()
+
+    @pytest.mark.asyncio
+    async def test_get_notifies_sync_not_full(self):
+        loop = asyncio.get_running_loop()
+        q = janus.Queue(2)
+        q.sync_q.put_nowait(1)
+        q.sync_q.put_nowait(2)
+
+        with ThreadPoolExecutor(4) as executor:
+            for _ in range(4):
+                executor.submit(q.sync_q.put, object())
+
+            while q._sync_not_full_waiting != 4:
+                await asyncio.sleep(0.001)
+
+            q.sync_q.get_nowait()
+            q.async_q.get_nowait()
+            await loop.run_in_executor(executor, q.sync_q.get)
+            await q.async_q.get()
+
+        assert q.sync_q.qsize() == 2
+        await q.aclose()
+
+    @pytest.mark.asyncio
+    async def test_get_notifies_async_not_full(self):
+        loop = asyncio.get_running_loop()
+        q = janus.Queue(2)
+        q.sync_q.put_nowait(1)
+        q.sync_q.put_nowait(2)
+
+        tasks = [
+            loop.create_task(q.async_q.put(object()))
+            for _ in range(4)
+        ]
+
+        while q._async_not_full_waiting != 4:
+            await asyncio.sleep(0)
+
+        q.sync_q.get_nowait()
+        q.async_q.get_nowait()
+        await loop.run_in_executor(None, q.sync_q.get)
+        await q.async_q.get()
+
+        await asyncio.gather(*tasks)
+        assert q.sync_q.qsize() == 2
+        await q.aclose()
