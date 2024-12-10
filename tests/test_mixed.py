@@ -10,8 +10,10 @@ import janus
 
 
 class TestMixedMode:
-    @pytest.mark.skipif(sys.version_info >= (3, 10),
-                        reason="Python 3.10+ supports delayed initialization")
+    @pytest.mark.skipif(
+        sys.version_info >= (3, 10),
+        reason="Python 3.10+ supports delayed initialization",
+    )
     def test_ctor_noloop(self):
         with pytest.raises(RuntimeError):
             janus.Queue()
@@ -352,10 +354,7 @@ class TestMixedMode:
         loop = asyncio.get_running_loop()
         q = janus.Queue()
 
-        tasks = [
-            loop.create_task(q.async_q.get())
-            for _ in range(4)
-        ]
+        tasks = [loop.create_task(q.async_q.get()) for _ in range(4)]
 
         while q._async_not_empty_waiting != 4:
             await asyncio.sleep(0)
@@ -398,10 +397,7 @@ class TestMixedMode:
         q.sync_q.put_nowait(1)
         q.sync_q.put_nowait(2)
 
-        tasks = [
-            loop.create_task(q.async_q.put(object()))
-            for _ in range(4)
-        ]
+        tasks = [loop.create_task(q.async_q.put(object())) for _ in range(4)]
 
         while q._async_not_full_waiting != 4:
             await asyncio.sleep(0)

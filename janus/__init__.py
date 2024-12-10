@@ -153,7 +153,7 @@ class Queue(Generic[T]):
             raise RuntimeError("Waiting for non-closed queue")
         # give execution chances for the task-done callbacks
         # of async tasks created inside
-        # _notify_async_not_empty, _notify_async_not_full
+        # _make_async_not_empty_notifier, _make_async_not_full_notifier
         # methods.
         await asyncio.sleep(0)
         if not self._pending:
@@ -225,35 +225,19 @@ class Queue(Generic[T]):
         async with self._async_mutex:
             self._async_not_empty.notify()
 
-    def _make_async_not_empty_notifier(self) -> None:
-        # self._loop is set if called by q._call_soon_threadsafe()
-        assert self._loop is not None  # nosec: B101
-        task = self._loop.create_task(self._async_not_empty_notifier())
+    def _make_async_not_empty_notifier(self, loop: asyncio.AbstractEventLoop) -> None:
+        task = loop.create_task(self._async_not_empty_notifier())
         task.add_done_callback(self._pending.remove)
         self._pending.append(task)
-
-    def _notify_async_not_empty(self, *, threadsafe: bool) -> None:
-        if threadsafe:
-            self._call_soon_threadsafe(self._make_async_not_empty_notifier)
-        else:
-            self._make_async_not_empty_notifier()
 
     async def _async_not_full_notifier(self) -> None:
         async with self._async_mutex:
             self._async_not_full.notify()
 
-    def _make_async_not_full_notifier(self) -> None:
-        # self._loop is set if called by q._call_soon_threadsafe()
-        assert self._loop is not None  # nosec: B101
-        task = self._loop.create_task(self._async_not_full_notifier())
+    def _make_async_not_full_notifier(self, loop: asyncio.AbstractEventLoop) -> None:
+        task = loop.create_task(self._async_not_full_notifier())
         task.add_done_callback(self._pending.remove)
         self._pending.append(task)
-
-    def _notify_async_not_full(self, *, threadsafe: bool) -> None:
-        if threadsafe:
-            self._call_soon_threadsafe(self._make_async_not_full_notifier)
-        else:
-            self._make_async_not_full_notifier()
 
     def _check_closing(self) -> None:
         if self._closing:
@@ -393,7 +377,10 @@ class _SyncQueueProxy(SyncQueue[T]):
             if parent._sync_not_empty_waiting:
                 parent._sync_not_empty.notify()
             if parent._async_not_empty_waiting:
-                parent._notify_async_not_empty(threadsafe=True)
+                if parent._loop is not None:
+                    parent._call_soon_threadsafe(
+                        parent._make_async_not_empty_notifier, parent._loop
+                    )
 
     def get(self, block: bool = True, timeout: OptFloat = None) -> T:
         """Remove and return an item from the queue.
@@ -436,7 +423,10 @@ class _SyncQueueProxy(SyncQueue[T]):
             if parent._sync_not_full_waiting:
                 parent._sync_not_full.notify()
             if parent._async_not_full_waiting:
-                parent._notify_async_not_full(threadsafe=True)
+                if parent._loop is not None:
+                    parent._call_soon_threadsafe(
+                        parent._make_async_not_full_notifier, parent._loop
+                    )
             return item
 
     def put_nowait(self, item: T) -> None:
@@ -557,7 +547,7 @@ class _AsyncQueueProxy(AsyncQueue[T]):
 
             parent._put_internal(item)
             if parent._async_not_empty_waiting:
-                parent._notify_async_not_empty(threadsafe=False)
+                parent._make_async_not_empty_notifier(loop)
             if parent._sync_not_empty_waiting:
                 parent._notify_sync_not_empty(loop)
 
@@ -615,7 +605,7 @@ class _AsyncQueueProxy(AsyncQueue[T]):
 
             item = parent._get()
             if parent._async_not_full_waiting:
-                parent._notify_async_not_full(threadsafe=False)
+                parent._make_async_not_full_notifier(loop)
             if parent._sync_not_full_waiting:
                 parent._notify_sync_not_full(loop)
             return item
