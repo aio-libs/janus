@@ -69,8 +69,7 @@ Example
         fut = loop.run_in_executor(None, threaded, queue.sync_q)
         await async_coro(queue.async_q)
         await fut
-        queue.close()
-        await queue.wait_closed()
+        await queue.aclose()
 
 
     asyncio.run(main())
@@ -83,8 +82,8 @@ This library is built using a classic thread-safe design. The design is
 time-tested, but has some limitations.
 
 * Once you are done working with a queue, you must properly close it using
-  ``close()`` and ``wait_closed()``. This is because this library creates new
-  tasks to notify other threads. If you do not properly close the queue,
+  ``aclose()``. This is because this library creates new tasks to notify other
+  threads. If you do not properly close the queue,
   `asyncio may generate error messages
   <https://github.com/aio-libs/janus/issues/574>`_.
 * The library has acceptable performance only when used as intended, that is,
@@ -92,7 +91,7 @@ time-tested, but has some limitations.
   For sync-only and async-only cases, use queues from
   `queue <https://docs.python.org/3/library/queue.html>`_ and
   `asyncio <https://docs.python.org/3/library/asyncio-queue.html>`_ modules,
-  otherwise `the slowdown will be significant
+  otherwise `the slowdown can be significant
   <https://github.com/aio-libs/janus/issues/419>`_.
 * You cannot use queues for communicating between two different event loops
   because, like all asyncio primitives, they bind to the current one.
