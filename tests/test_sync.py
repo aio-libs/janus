@@ -408,8 +408,6 @@ class TestFailingQueue(BlockingTestMixin):
     async def test_closed_loop_non_failing(self):
         loop = asyncio.get_running_loop()
         _q = janus.Queue(QUEUE_SIZE)
-        # bind asyncio loop, otherwise call_soon_threadsafe() is not called
-        _q.async_q
         q = _q.sync_q
         # we are pacthing loop to follow setUp/tearDown agreement
         with patch.object(loop, "call_soon_threadsafe") as func:
