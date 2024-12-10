@@ -427,7 +427,7 @@ class TestFailingQueue(BlockingTestMixin):
 
 
 @pytest.mark.skipif(
-    sys.version_info >= (3, 10),
+    sys.version_info < (3, 10),
     reason="Python 3.10+ is required",
 )
 def test_sync_only_api():
