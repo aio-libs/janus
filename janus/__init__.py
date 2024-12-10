@@ -127,13 +127,12 @@ class Queue(Generic[T]):
 
     def _get_loop(self) -> asyncio.AbstractEventLoop:
         # Warning!
-        # The function should be called when self._sync_mutex.locked() is True,
+        # The function should be called when self._sync_mutex is locked,
         # otherwise the code is not thread-safe
         loop = asyncio.get_running_loop()
 
         if self._loop is None:
-            if self._loop is None:
-                self._loop = loop
+            self._loop = loop
         if loop is not self._loop:
             raise RuntimeError(f"{self!r} is bound to a different event loop")
         return loop
