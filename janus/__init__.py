@@ -144,6 +144,7 @@ class Queue(Generic[T]):
             for fut in self._pending:
                 fut.cancel()
             if self._async_tasks_done_waiting:
+                assert self._loop is not None
                 self._call_soon_threadsafe(  # unblocks all async_q.join()
                     self._make_async_tasks_done_notifier, self._loop
                 )
@@ -280,6 +281,7 @@ class _SyncQueueProxy(SyncQueue[T]):
                 if parent._sync_tasks_done_waiting:
                     parent._sync_tasks_done.notify_all()
                 if parent._async_tasks_done_waiting:
+                    assert parent._loop is not None
                     parent._call_soon_threadsafe(
                         parent._make_async_tasks_done_notifier, parent._loop
                     )
@@ -380,10 +382,10 @@ class _SyncQueueProxy(SyncQueue[T]):
             if parent._sync_not_empty_waiting:
                 parent._sync_not_empty.notify()
             if parent._async_not_empty_waiting:
-                if parent._loop is not None:
-                    parent._call_soon_threadsafe(
-                        parent._make_async_not_empty_notifier, parent._loop
-                    )
+                assert parent._loop is not None
+                parent._call_soon_threadsafe(
+                    parent._make_async_not_empty_notifier, parent._loop
+                )
 
     def get(self, block: bool = True, timeout: OptFloat = None) -> T:
         """Remove and return an item from the queue.
@@ -426,10 +428,10 @@ class _SyncQueueProxy(SyncQueue[T]):
             if parent._sync_not_full_waiting:
                 parent._sync_not_full.notify()
             if parent._async_not_full_waiting:
-                if parent._loop is not None:
-                    parent._call_soon_threadsafe(
-                        parent._make_async_not_full_notifier, parent._loop
-                    )
+                assert parent._loop is not None
+                parent._call_soon_threadsafe(
+                    parent._make_async_not_full_notifier, parent._loop
+                )
             return item
 
     def put_nowait(self, item: T) -> None:
@@ -635,6 +637,7 @@ class _AsyncQueueProxy(AsyncQueue[T]):
             parent._unfinished_tasks -= 1
             if parent._unfinished_tasks == 0:
                 if parent._async_tasks_done_waiting:
+                    assert parent._loop is not None
                     parent._call_soon_threadsafe(
                         parent._make_async_tasks_done_notifier, parent._loop
                     )
