@@ -511,18 +511,14 @@ class _AsyncQueueProxy(AsyncQueue[T]):
         async with parent._async_not_full:
             with parent._sync_mutex:
                 parent._get_loop()  # check the event loop
-                if parent._maxsize > 0:
-                    do_wait = True
-                    while do_wait:
-                        do_wait = parent._qsize() >= parent._maxsize
-                        if do_wait:
-                            parent._async_not_full_waiting += 1
-                            parent._sync_mutex.release()
-                            try:
-                                await parent._async_not_full.wait()
-                            finally:
-                                parent._sync_mutex.acquire()
-                                parent._async_not_full_waiting -= 1
+                while 0 < parent._maxsize <= parent._qsize():
+                    parent._async_not_full_waiting += 1
+                    parent._sync_mutex.release()
+                    try:
+                        await parent._async_not_full.wait()
+                    finally:
+                        parent._sync_mutex.acquire()
+                        parent._async_not_full_waiting -= 1
 
                 parent._put_internal(item)
                 if parent._async_not_empty_waiting:
@@ -539,9 +535,8 @@ class _AsyncQueueProxy(AsyncQueue[T]):
         parent._check_closing()
         with parent._sync_mutex:
             loop = parent._get_loop()
-            if parent._maxsize > 0:
-                if parent._qsize() >= parent._maxsize:
-                    raise AsyncQueueFull
+            if 0 < parent._maxsize <= parent._qsize():
+                raise AsyncQueueFull
 
             parent._put_internal(item)
             if parent._async_not_empty_waiting:
@@ -561,18 +556,14 @@ class _AsyncQueueProxy(AsyncQueue[T]):
         async with parent._async_not_empty:
             with parent._sync_mutex:
                 parent._get_loop()  # check the event loop
-                do_wait = True
-                while do_wait:
-                    do_wait = parent._qsize() == 0
-
-                    if do_wait:
-                        parent._async_not_empty_waiting += 1
-                        parent._sync_mutex.release()
-                        try:
-                            await parent._async_not_empty.wait()
-                        finally:
-                            parent._sync_mutex.acquire()
-                            parent._async_not_empty_waiting -= 1
+                while not parent._qsize():
+                    parent._async_not_empty_waiting += 1
+                    parent._sync_mutex.release()
+                    try:
+                        await parent._async_not_empty.wait()
+                    finally:
+                        parent._sync_mutex.acquire()
+                        parent._async_not_empty_waiting -= 1
 
                 item = parent._get()
                 if parent._async_not_full_waiting:
@@ -589,7 +580,7 @@ class _AsyncQueueProxy(AsyncQueue[T]):
         parent = self._parent
         parent._check_closing()
         with parent._sync_mutex:
-            if parent._qsize() == 0:
+            if not parent._qsize():
                 raise AsyncQueueEmpty
 
             loop = parent._get_loop()
