@@ -144,10 +144,9 @@ class Queue(Generic[T]):
             for fut in self._pending:
                 fut.cancel()
             if self._async_tasks_done_waiting:
-                if self._loop is not None:
-                    self._call_soon_threadsafe(  # unblocks all async_q.join()
-                        self._make_async_tasks_done_notifier, self._loop
-                    )
+                self._call_soon_threadsafe(  # unblocks all async_q.join()
+                    self._make_async_tasks_done_notifier, self._loop
+                )
             if self._sync_tasks_done_waiting:
                 self._sync_tasks_done.notify_all()  # unblocks all sync_q.join()
 
@@ -281,10 +280,9 @@ class _SyncQueueProxy(SyncQueue[T]):
                 if parent._sync_tasks_done_waiting:
                     parent._sync_tasks_done.notify_all()
                 if parent._async_tasks_done_waiting:
-                    if parent._loop is not None:
-                        parent._call_soon_threadsafe(
-                            parent._make_async_tasks_done_notifier, parent._loop
-                        )
+                    parent._call_soon_threadsafe(
+                        parent._make_async_tasks_done_notifier, parent._loop
+                    )
             parent._unfinished_tasks = unfinished
 
     def join(self) -> None:
@@ -637,10 +635,9 @@ class _AsyncQueueProxy(AsyncQueue[T]):
             parent._unfinished_tasks -= 1
             if parent._unfinished_tasks == 0:
                 if parent._async_tasks_done_waiting:
-                    if parent._loop is not None:
-                        parent._call_soon_threadsafe(
-                            parent._make_async_tasks_done_notifier, parent._loop
-                        )
+                    parent._call_soon_threadsafe(
+                        parent._make_async_tasks_done_notifier, parent._loop
+                    )
                 if parent._sync_tasks_done_waiting:
                     parent._sync_tasks_done.notify_all()
 
@@ -656,23 +653,19 @@ class _AsyncQueueProxy(AsyncQueue[T]):
         parent._check_closing()
         async with parent._async_tasks_done:
             parent._sync_mutex.acquire()
-            locked = True
             parent._get_loop()  # check the event loop
             try:
                 while parent._unfinished_tasks:
                     parent._async_tasks_done_waiting += 1
-                    locked = False
                     parent._sync_mutex.release()
                     try:
                         await parent._async_tasks_done.wait()
                     finally:
                         parent._sync_mutex.acquire()
-                        locked = True
                         parent._async_tasks_done_waiting -= 1
                     parent._check_closing()
             finally:
-                if locked:
-                    parent._sync_mutex.release()
+                parent._sync_mutex.release()
 
 
 class PriorityQueue(Queue[T]):
