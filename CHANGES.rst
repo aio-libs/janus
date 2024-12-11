@@ -16,6 +16,8 @@ Changes
 
 - Remove sync notifiers for a major speedup #714
 
+- Fix hang in AsyncQueue.join() #716
+
 1.1.0 (2024-10-30)
 ------------------
 
