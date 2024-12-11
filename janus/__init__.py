@@ -488,7 +488,7 @@ class _AsyncQueueProxy(AsyncQueue[T]):
         async with parent._async_not_full:
             parent._sync_mutex.acquire()
             locked = True
-            loop = parent._get_loop()
+            parent._get_loop()  # check the event loop
             try:
                 if parent._maxsize > 0:
                     do_wait = True
@@ -545,7 +545,7 @@ class _AsyncQueueProxy(AsyncQueue[T]):
         async with parent._async_not_empty:
             parent._sync_mutex.acquire()
             locked = True
-            loop = parent._get_loop()
+            parent._get_loop()  # check the event loop
             try:
                 do_wait = True
                 while do_wait:
