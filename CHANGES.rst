@@ -14,6 +14,8 @@ Changes
 
 - Allow ``janus.Queue()`` instantiation without running asyncio event loop #710
 
+- Remove sync notifiers for a major speedup #714
+
 1.1.0 (2024-10-30)
 ------------------
 

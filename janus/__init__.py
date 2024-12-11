@@ -203,24 +203,6 @@ class Queue(Generic[T]):
         self._unfinished_tasks += 1
         self._finished.clear()
 
-    def _sync_not_empty_notifier(self) -> None:
-        with self._sync_mutex:
-            self._sync_not_empty.notify()
-
-    def _notify_sync_not_empty(self, loop: asyncio.AbstractEventLoop) -> None:
-        fut = loop.run_in_executor(None, self._sync_not_empty_notifier)
-        fut.add_done_callback(self._pending.remove)
-        self._pending.append(fut)
-
-    def _sync_not_full_notifier(self) -> None:
-        with self._sync_mutex:
-            self._sync_not_full.notify()
-
-    def _notify_sync_not_full(self, loop: asyncio.AbstractEventLoop) -> None:
-        fut = loop.run_in_executor(None, self._sync_not_full_notifier)
-        fut.add_done_callback(self._pending.remove)
-        self._pending.append(fut)
-
     async def _async_not_empty_notifier(self) -> None:
         async with self._async_mutex:
             self._async_not_empty.notify()
@@ -506,7 +488,7 @@ class _AsyncQueueProxy(AsyncQueue[T]):
         async with parent._async_not_full:
             parent._sync_mutex.acquire()
             locked = True
-            loop = parent._get_loop()
+            parent._get_loop()  # check the event loop
             try:
                 if parent._maxsize > 0:
                     do_wait = True
@@ -527,7 +509,7 @@ class _AsyncQueueProxy(AsyncQueue[T]):
                 if parent._async_not_empty_waiting:
                     parent._async_not_empty.notify()
                 if parent._sync_not_empty_waiting:
-                    parent._notify_sync_not_empty(loop)
+                    parent._sync_not_empty.notify()
             finally:
                 if locked:
                     parent._sync_mutex.release()
@@ -549,7 +531,7 @@ class _AsyncQueueProxy(AsyncQueue[T]):
             if parent._async_not_empty_waiting:
                 parent._make_async_not_empty_notifier(loop)
             if parent._sync_not_empty_waiting:
-                parent._notify_sync_not_empty(loop)
+                parent._sync_not_empty.notify()
 
     async def get(self) -> T:
         """Remove and return an item from the queue.
@@ -563,7 +545,7 @@ class _AsyncQueueProxy(AsyncQueue[T]):
         async with parent._async_not_empty:
             parent._sync_mutex.acquire()
             locked = True
-            loop = parent._get_loop()
+            parent._get_loop()  # check the event loop
             try:
                 do_wait = True
                 while do_wait:
@@ -584,7 +566,7 @@ class _AsyncQueueProxy(AsyncQueue[T]):
                 if parent._async_not_full_waiting:
                     parent._async_not_full.notify()
                 if parent._sync_not_full_waiting:
-                    parent._notify_sync_not_full(loop)
+                    parent._sync_not_full.notify()
                 return item
             finally:
                 if locked:
@@ -607,7 +589,7 @@ class _AsyncQueueProxy(AsyncQueue[T]):
             if parent._async_not_full_waiting:
                 parent._make_async_not_full_notifier(loop)
             if parent._sync_not_full_waiting:
-                parent._notify_sync_not_full(loop)
+                parent._sync_not_full.notify()
             return item
 
     def task_done(self) -> None:
