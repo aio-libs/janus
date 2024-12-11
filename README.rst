@@ -86,7 +86,7 @@ time-tested, but has some limitations.
   threads. If you do not properly close the queue,
   `asyncio may generate error messages
   <https://github.com/aio-libs/janus/issues/574>`_.
-* The library has acceptable performance only when used as intended, that is,
+* The library has quite good performance only when used as intended, that is,
   for communication between synchronous code and asynchronous one.
   For sync-only and async-only cases, use queues from
   `queue <https://docs.python.org/3/library/queue.html>`_ and
