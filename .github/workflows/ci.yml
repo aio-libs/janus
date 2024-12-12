@@ -94,8 +94,6 @@ jobs:
         pytest --cov=janus --cov=tests --cov-report=term --cov-report=xml:coverage.xml
     - name: Upload coverage artifact
       uses: aio-libs/prepare-coverage@v24.9.2
-      with:
-        key: unit-${{ matrix.python-version }}
 
   benchmark:
     name: Benchmark
