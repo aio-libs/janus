@@ -210,39 +210,29 @@ class TestMixedMode:
         q.close()
 
         with pytest.raises(
-            RuntimeError, match="Operation on the closed queue is forbidden"
+            janus.SyncQueueShutDown
         ):
             q.sync_q.put(5)
 
         with pytest.raises(
-            RuntimeError, match="Operation on the closed queue is forbidden"
+            janus.SyncQueueShutDown
         ):
             q.sync_q.get()
 
         with pytest.raises(
-            RuntimeError, match="Operation on the closed queue is forbidden"
-        ):
-            q.sync_q.task_done()
-
-        with pytest.raises(
-            RuntimeError, match="Operation on the closed queue is forbidden"
+            janus.AsyncQueueShutDown
         ):
             await q.async_q.put(5)
 
         with pytest.raises(
-            RuntimeError, match="Operation on the closed queue is forbidden"
+            janus.AsyncQueueShutDown
         ):
             q.async_q.put_nowait(5)
 
         with pytest.raises(
-            RuntimeError, match="Operation on the closed queue is forbidden"
+            janus.AsyncQueueShutDown
         ):
             q.async_q.get_nowait()
-
-        with pytest.raises(
-            RuntimeError, match="Operation on the closed queue is forbidden"
-        ):
-            await q.sync_q.task_done()
 
         await q.wait_closed()
 
@@ -269,10 +259,7 @@ class TestMixedMode:
     async def test_async_join_after_closing(self):
         q = janus.Queue()
         q.close()
-        with pytest.raises(
-            RuntimeError, match="Operation on the closed queue is forbidden"
-        ):
-            await asyncio.wait_for(q.async_q.join(), timeout=0.1)
+        await asyncio.wait_for(q.async_q.join(), timeout=0.1)
 
         await q.wait_closed()
 
@@ -285,63 +272,33 @@ class TestMixedMode:
         await asyncio.sleep(0.01)  # ensure tasks are blocking
 
         q.close()
-        with pytest.raises(
-            RuntimeError, match="Operation on the closed queue is forbidden"
-        ):
-            await asyncio.wait_for(task, timeout=0.1)
+        await asyncio.wait_for(task, timeout=0.1)
 
         await q.wait_closed()
 
     @pytest.mark.asyncio
     async def test_sync_join_after_closing(self):
+        loop = asyncio.get_running_loop()
         q = janus.Queue()
         q.sync_q.put(1)
 
         q.close()
-
-        loop = asyncio.get_event_loop()
-        fut = asyncio.Future()
-
-        def sync_join():
-            try:
-                q.sync_q.join()
-            except Exception as exc:
-                loop.call_soon_threadsafe(fut.set_exception, exc)
-
-        thr = threading.Thread(target=sync_join, daemon=True)
-        thr.start()
-
-        with pytest.raises(
-            RuntimeError, match="Operation on the closed queue is forbidden"
-        ):
-            await asyncio.wait_for(fut, timeout=0.1)
+        await asyncio.wait_for(loop.run_in_executor(None, q.sync_q.join), timeout=0.1)
 
         await q.wait_closed()
 
     @pytest.mark.asyncio
     async def test_close_after_sync_join(self):
+        loop = asyncio.get_running_loop()
         q = janus.Queue()
         q.sync_q.put(1)
 
-        loop = asyncio.get_event_loop()
-        fut = asyncio.Future()
-
-        def sync_join():
-            try:
-                q.sync_q.join()
-            except Exception as exc:
-                loop.call_soon_threadsafe(fut.set_exception, exc)
-
-        thr = threading.Thread(target=sync_join, daemon=True)
-        thr.start()
-        thr.join(0.1)  # ensure tasks are blocking
+        fut = loop.run_in_executor(None, q.sync_q.join)
+        await asyncio.sleep(0.1)  # ensure tasks are blocking
 
         q.close()
 
-        with pytest.raises(
-            RuntimeError, match="Operation on the closed queue is forbidden"
-        ):
-            await asyncio.wait_for(fut, timeout=0.1)
+        await asyncio.wait_for(fut, timeout=0.1)
 
         await q.wait_closed()
 
