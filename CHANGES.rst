@@ -1,7 +1,7 @@
 Changes
 =======
 
-1.2.0 (2024-12-XX)
+1.2.0 (2024-12-12)
 ------------------
 
 - Optimize internal implementation for a little speedup #699

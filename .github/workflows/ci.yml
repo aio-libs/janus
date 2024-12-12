@@ -9,11 +9,6 @@ on:
   schedule:
     - cron:  '0 6 * * *'  # Daily 6AM UTC build
 
-concurrency:
-  group: ${{ github.ref }}-${{ github.workflow }}
-  cancel-in-progress: true
-
-
 env:
   COLOR: >-  # Supposedly, pytest or coveragepy use this
     yes
@@ -94,8 +89,6 @@ jobs:
         pytest --cov=janus --cov=tests --cov-report=term --cov-report=xml:coverage.xml
     - name: Upload coverage artifact
       uses: aio-libs/prepare-coverage@v24.9.2
-      with:
-        key: unit-${{ matrix.python-version }}
 
   benchmark:
     name: Benchmark
