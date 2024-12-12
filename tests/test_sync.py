@@ -411,8 +411,8 @@ class TestFailingQueue(BlockingTestMixin):
         _q = janus.Queue(QUEUE_SIZE)
         q = _q.sync_q
         # we are pacthing loop to follow setUp/tearDown agreement
-        with patch.object(loop, "call_soon_threadsafe") as func:
-            func.side_effect = RuntimeError()
+        with patch.object(loop, "is_closed") as func:
+            func.return_value = True
             task = loop.create_task(_q.async_q.get())
             await asyncio.sleep(0)
             try:
