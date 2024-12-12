@@ -16,7 +16,7 @@ fmt:
 
 cov: flake develop
 	pytest --cov=janus --cov=tests --cov-report=term --cov-report=html
-	@echo "open file://`pwd`/htmlcov/index.html"
+	@echo "open file://`pwd`/coverage/index.html"
 
 checkrst:
 	python setup.py check --restructuredtext

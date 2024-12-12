@@ -574,7 +574,7 @@ class _AsyncQueueProxy(AsyncQueue[T]):
         parent = self._parent
         async with parent._async_not_empty:
             with parent._sync_mutex:
-                if parent._is_shutdown:
+                if parent._is_shutdown and not parent._qsize():
                     raise AsyncQueueShutDown
                 parent._get_loop()  # check the event loop
                 while not parent._qsize():
@@ -585,7 +585,7 @@ class _AsyncQueueProxy(AsyncQueue[T]):
                     finally:
                         parent._sync_mutex.acquire()
                         parent._async_not_empty_waiting -= 1
-                    if parent._is_shutdown:
+                    if parent._is_shutdown and not parent._qsize():
                         raise AsyncQueueShutDown
 
                 item = parent._get()
@@ -602,7 +602,7 @@ class _AsyncQueueProxy(AsyncQueue[T]):
         """
         parent = self._parent
         with parent._sync_mutex:
-            if parent._is_shutdown:
+            if parent._is_shutdown and not parent._qsize():
                 raise AsyncQueueShutDown
             if not parent._qsize():
                 raise AsyncQueueEmpty

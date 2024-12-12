@@ -1,6 +1,5 @@
 import asyncio
 import sys
-import threading
 
 from concurrent.futures import ThreadPoolExecutor
 
@@ -383,3 +382,19 @@ class TestMixedMode:
         await asyncio.gather(*tasks)
         assert q.sync_q.qsize() == 2
         await q.aclose()
+
+    @pytest.mark.asyncio
+    async def test_wait_closed_with_pending_tasks(self):
+        q = janus.Queue()
+
+        async def getter():
+            await q.async_q.get()
+
+        task = asyncio.create_task(getter())
+        await asyncio.sleep(0.01)
+        q.shutdown()
+        # q._pending is not empty now
+        await q.wait_closed()
+
+        with pytest.raises(janus.AsyncQueueShutDown):
+            await task
