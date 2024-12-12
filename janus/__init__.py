@@ -125,9 +125,8 @@ class Queue(Generic[T]):
             for fut in self._pending:
                 fut.cancel()
             if self._async_tasks_done_waiting:
-                if self._loop is not None:
-                    # unblocks all async_q.join()
-                    self._notify_async(self._async_tasks_done.notify_all)
+                # unblocks all async_q.join()
+                self._notify_async(self._async_tasks_done.notify_all)
             if self._sync_tasks_done_waiting:
                 self._sync_tasks_done.notify_all()  # unblocks all sync_q.join()
 
