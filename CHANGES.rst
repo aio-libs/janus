@@ -1,6 +1,12 @@
 Changes
 =======
 
+2.0.0 (2024-12-XX)
+------------------
+
+- Implement .shutdown() for both sync and async APIs #720
+
+
 1.2.0 (2024-12-12)
 ------------------
 
