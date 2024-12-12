@@ -12,7 +12,7 @@ from queue import ShutDown as SyncQueueShutDown
 from time import monotonic
 from typing import Callable, Generic, Optional, Protocol, TypeVar
 
-__version__ = "1.1.0"
+__version__ = "1.2.0"
 __all__ = (
     "Queue",
     "PriorityQueue",
