@@ -9,6 +9,24 @@ on:
   schedule:
     - cron:  '0 6 * * *'  # Daily 6AM UTC build
 
+concurrency:
+  group: ${{ github.ref }}-${{ github.workflow }}
+  cancel-in-progress: true
+
+
+env:
+  COLOR: >-  # Supposedly, pytest or coveragepy use this
+    yes
+  FORCE_COLOR: 1  # Request colored output from CLI tools supporting it
+  MYPY_FORCE_COLOR: 1  # MyPy's color enforcement
+  PIP_DISABLE_PIP_VERSION_CHECK: 1
+  PIP_NO_PYTHON_VERSION_WARNING: 1
+  PIP_NO_WARN_SCRIPT_LOCATION: 1
+  PRE_COMMIT_COLOR: always
+  PROJECT_NAME: propcache
+  PY_COLORS: 1  # Recognized by the `py` package, dependency of `pytest`
+  PYTHONIOENCODING: utf-8
+  PYTHONUTF8: 1
 
 jobs:
 
@@ -135,6 +153,12 @@ jobs:
     runs-on: ubuntu-latest
     # Run only on pushing a tag
     if: github.event_name == 'push' && contains(github.ref, 'refs/tags/')
+    permissions:
+      contents: write  # IMPORTANT: mandatory for making GitHub Releases
+      id-token: write  # IMPORTANT: mandatory for trusted publishing & sigstore
+    environment:
+      name: pypi
+      url: https://pypi.org/p/${{ env.PROJECT_NAME }}
     steps:
     - name: Checkout
       uses: actions/checkout@v4
@@ -144,15 +168,46 @@ jobs:
       uses: py-actions/py-dependency-install@v4.1.0
       with:
         path: requirements-dev.txt
-    - name: Install twine
+    - name: Install builder
       run: |
-        python -m pip install twine wheel build
+        python -m pip install wheel build
     - name: Make dists
       run: |
         python -m build
-    - name: PyPI upload
-      env:
-        TWINE_USERNAME: __token__
-        TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
+
+    - name: Login
       run: |
-        twine upload dist/*
+        echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
+    - name: Make Release
+      uses: aio-libs/create-release@v1.6.6
+      with:
+        changes_file: CHANGES.rst
+        version_file: src/${{ env.PROJECT_NAME }}/__init__.py
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        head_line: >-
+          {version} \({date}\)\n
+        # fix_issue_regex: >-
+        #   :issue:`(\d+)`
+        # fix_issue_repl: >-
+        #   #\1
+
+    - name: >-
+        Publish 🐍📦 to PyPI
+      uses: pypa/gh-action-pypi-publish@release/v1
+
+    - name: Sign the dists with Sigstore
+      uses: sigstore/gh-action-sigstore-python@v3.0.0
+      with:
+        inputs: >-
+          ./dist/*.tar.gz
+          ./dist/*.whl
+
+    - name: Upload artifact signatures to GitHub Release
+      # Confusingly, this action also supports updating releases, not
+      # just creating them. This is what we want here, since we've manually
+      # created the release above.
+      uses: softprops/action-gh-release@v2
+      with:
+        # dist/ contains the built packages, which smoketest-artifacts/
+        # contains the signatures and certificates.
+        files: dist/**
