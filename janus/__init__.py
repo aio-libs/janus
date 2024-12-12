@@ -3,14 +3,27 @@ import sys
 import threading
 from asyncio import QueueEmpty as AsyncQueueEmpty
 from asyncio import QueueFull as AsyncQueueFull
-from asyncio import QueueShutDown as AsyncQueueShutDown
 from collections import deque
 from heapq import heappop, heappush
 from queue import Empty as SyncQueueEmpty
 from queue import Full as SyncQueueFull
-from queue import ShutDown as SyncQueueShutDown
 from time import monotonic
 from typing import Callable, Generic, Optional, Protocol, TypeVar
+
+if sys.version_info >= (3, 13):
+    from asyncio import QueueShutDown as AsyncQueueShutDown
+    from queue import ShutDown as SyncQueueShutDown
+else:
+    class QueueShutDown(Exception):
+        pass
+
+    AsyncQueueShutDown = QueueShutDown
+
+    class ShutDown(Exception):
+        pass
+
+    SyncQueueShutDown = ShutDown
+
 
 __version__ = "1.2.0"
 __all__ = (
