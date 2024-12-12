@@ -90,7 +90,7 @@ time-tested, but has some limitations.
   for communication between synchronous code and asynchronous one.
   For sync-only and async-only cases, use queues from
   `queue <https://docs.python.org/3/library/queue.html>`_ and
-  `asyncio <https://docs.python.org/3/library/asyncio-queue.html>`_ modules,
+  `asyncio queue <https://docs.python.org/3/library/asyncio-queue.html>`_ modules,
   otherwise `the slowdown can be significant
   <https://github.com/aio-libs/janus/issues/419>`_.
 * You cannot use queues for communicating between two different event loops
