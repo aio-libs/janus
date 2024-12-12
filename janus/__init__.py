@@ -204,11 +204,8 @@ class Queue(Generic[T]):
         # The function should be called when self._sync_mutex is locked,
         # otherwise the code is not thread-safe
         loop = self._loop
-        if loop is None:
-            # async API didn't accessed yet, nothing to notify
-            return
-        if loop.is_closed():
-            # loop.call_soon_threadsafe() is not available
+        if loop is None or loop.is_closed():
+            # async API is not available, nothing to notify
             return
         loop.call_soon_threadsafe(self._setup_async_notifier, loop, method)
 
