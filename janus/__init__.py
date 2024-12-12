@@ -29,25 +29,8 @@ __all__ = (
 )
 
 
-if sys.version_info >= (3, 10):
-    from typing import ParamSpec
-else:
-    from typing_extensions import ParamSpec
-
-
 T = TypeVar("T")
-P = ParamSpec("P")
 OptFloat = Optional[float]
-
-
-class _SyncQueueShutDown(SyncQueueShutDown):#, RuntimeError):
-    # Derive from RuntimeError for the backward compatibility
-    pass
-
-
-class _AsyncQueueShutDown(AsyncQueueShutDown):#, RuntimeError):
-    # Derive from RuntimeError for the backward compatibility
-    pass
 
 
 class BaseQueue(Protocol[T]):
@@ -131,18 +114,6 @@ class Queue(Generic[T]):
         self._sync_queue = _SyncQueueProxy(self)
         self._async_queue = _AsyncQueueProxy(self)
 
-    def _call_soon_threadsafe(
-        self, callback: Callable[P, None], *args: P.args, **kwargs: P.kwargs
-    ) -> None:
-        if self._loop is None:
-            # async API didn't accessed yet, nothing to notify
-            return
-        try:
-            self._loop.call_soon_threadsafe(callback, *args)
-        except RuntimeError:
-            # swallowing agreed in #2
-            pass
-
     def _get_loop(self) -> asyncio.AbstractEventLoop:
         # Warning!
         # The function should be called when self._sync_mutex is locked,
@@ -222,12 +193,22 @@ class Queue(Generic[T]):
         async with self._async_mutex:
             method()
 
-    def _notify_async(
+    def _setup_async_notifier(
         self, loop: asyncio.AbstractEventLoop, method: Callable[[], None]
     ) -> None:
         task = loop.create_task(self._do_async_notifier(method))
         task.add_done_callback(self._pending.remove)
         self._pending.append(task)
+
+    def _notify_async(self, method: Callable[[], None]) -> None:
+        # Warning!
+        # The function should be called when self._sync_mutex is locked,
+        # otherwise the code is not thread-safe
+        loop = self._loop
+        if loop is None or loop.is_closed():
+            # async API is not available, nothing to notify
+            return
+        loop.call_soon_threadsafe(self._setup_async_notifier, loop, method)
 
     def _check_closing(self) -> None:
         if self._closing:
@@ -275,12 +256,7 @@ class _SyncQueueProxy(SyncQueue[T]):
                 if parent._sync_tasks_done_waiting:
                     parent._sync_tasks_done.notify_all()
                 if parent._async_tasks_done_waiting:
-                    if parent._loop is not None:
-                        parent._call_soon_threadsafe(
-                            parent._notify_async,
-                            parent._loop,
-                            parent._async_tasks_done.notify_all,
-                        )
+                    parent._notify_async(parent._async_tasks_done.notify_all)
             parent._unfinished_tasks = unfinished
 
     def join(self) -> None:
@@ -351,7 +327,7 @@ class _SyncQueueProxy(SyncQueue[T]):
         parent._check_closing()
         with parent._sync_not_full:
             if parent._is_shutdown:
-                raise _SyncQueueShutDown
+                raise SyncQueueShutDown
             if parent._maxsize > 0:
                 if not block:
                     if parent._qsize() >= parent._maxsize:
@@ -364,7 +340,7 @@ class _SyncQueueProxy(SyncQueue[T]):
                         finally:
                             parent._sync_not_full_waiting -= 1
                         if parent._is_shutdown:
-                            raise _SyncQueueShutDown
+                            raise SyncQueueShutDown
                 elif timeout < 0:
                     raise ValueError("'timeout' must be a non-negative number")
                 else:
@@ -379,17 +355,12 @@ class _SyncQueueProxy(SyncQueue[T]):
                         finally:
                             parent._sync_not_full_waiting -= 1
                         if parent._is_shutdown:
-                            raise _SyncQueueShutDown
+                            raise SyncQueueShutDown
             parent._put_internal(item)
             if parent._sync_not_empty_waiting:
                 parent._sync_not_empty.notify()
             if parent._async_not_empty_waiting:
-                if parent._loop is not None:
-                    parent._call_soon_threadsafe(
-                        parent._notify_async,
-                        parent._loop,
-                        parent._async_not_empty.notify,
-                    )
+                parent._notify_async(parent._async_not_empty.notify)
 
     def get(self, block: bool = True, timeout: OptFloat = None) -> T:
         """Remove and return an item from the queue.
@@ -406,7 +377,7 @@ class _SyncQueueProxy(SyncQueue[T]):
         parent._check_closing()
         with parent._sync_not_empty:
             if parent._is_shutdown and not parent._qsize():
-                raise _SyncQueueShutDown
+                raise SyncQueueShutDown
             if not block:
                 if not parent._qsize():
                     raise SyncQueueEmpty
@@ -418,7 +389,7 @@ class _SyncQueueProxy(SyncQueue[T]):
                     finally:
                         parent._sync_not_empty_waiting -= 1
                     if parent._is_shutdown and not parent._qsize():
-                        raise _SyncQueueShutDown
+                        raise SyncQueueShutDown
             elif timeout < 0:
                 raise ValueError("'timeout' must be a non-negative number")
             else:
@@ -433,17 +404,12 @@ class _SyncQueueProxy(SyncQueue[T]):
                     finally:
                         parent._sync_not_empty_waiting -= 1
                     if parent._is_shutdown and not parent._qsize():
-                        raise _SyncQueueShutDown
+                        raise SyncQueueShutDown
             item = parent._get()
             if parent._sync_not_full_waiting:
                 parent._sync_not_full.notify()
             if parent._async_not_full_waiting:
-                if parent._loop is not None:
-                    parent._call_soon_threadsafe(
-                        parent._notify_async,
-                        parent._loop,
-                        parent._async_not_full.notify,
-                    )
+                parent._notify_async(parent._async_not_full.notify)
             return item
 
     def put_nowait(self, item: T) -> None:
@@ -476,7 +442,7 @@ class _SyncQueueProxy(SyncQueue[T]):
         parent._check_closing()
         with parent._sync_mutex:
             parent._is_shutdown = True
-            loop = parent._loop
+            parent._get_loop()
             if immediate:
                 while parent._qsize():
                     parent._get()
@@ -484,26 +450,12 @@ class _SyncQueueProxy(SyncQueue[T]):
                         parent._unfinished_tasks -= 1
                 # release all blocked threads in `join()`
                 parent._sync_tasks_done.notify_all()
-                if loop is not None:
-                    parent._call_soon_threadsafe(
-                        parent._notify_async,
-                        loop,
-                        parent._async_tasks_done.notify_all,
-                    )
+                parent._notify_async(parent._async_tasks_done.notify_all)
             # All getters need to re-check queue-empty to raise ShutDown
             parent._sync_not_empty.notify_all()
             parent._sync_not_full.notify_all()
-            if loop is not None:
-                parent._call_soon_threadsafe(
-                    parent._notify_async,
-                    loop,
-                    parent._async_not_empty.notify_all,
-                )
-                parent._call_soon_threadsafe(
-                    parent._notify_async,
-                    loop,
-                    parent._async_not_full.notify_all,
-                )
+            parent._notify_async(parent._async_not_empty.notify_all)
+            parent._notify_async(parent._async_not_empty.notify_all)
 
 
 class _AsyncQueueProxy(AsyncQueue[T]):
@@ -566,7 +518,7 @@ class _AsyncQueueProxy(AsyncQueue[T]):
         async with parent._async_not_full:
             with parent._sync_mutex:
                 if parent._is_shutdown:
-                    raise _AsyncQueueShutDown
+                    raise AsyncQueueShutDown
                 parent._get_loop()  # check the event loop
                 while 0 < parent._maxsize <= parent._qsize():
                     parent._async_not_full_waiting += 1
@@ -577,7 +529,7 @@ class _AsyncQueueProxy(AsyncQueue[T]):
                         parent._sync_mutex.acquire()
                         parent._async_not_full_waiting -= 1
                     if parent._is_shutdown:
-                        raise _AsyncQueueShutDown
+                        raise AsyncQueueShutDown
 
                 parent._put_internal(item)
                 if parent._async_not_empty_waiting:
@@ -594,14 +546,15 @@ class _AsyncQueueProxy(AsyncQueue[T]):
         parent._check_closing()
         with parent._sync_mutex:
             if parent._is_shutdown:
-                raise _AsyncQueueShutDown
-            loop = parent._get_loop()
+                raise AsyncQueueShutDown
+
+            parent._get_loop()
             if 0 < parent._maxsize <= parent._qsize():
                 raise AsyncQueueFull
 
             parent._put_internal(item)
             if parent._async_not_empty_waiting:
-                parent._notify_async(loop, parent._async_not_empty.notify)
+                parent._notify_async(parent._async_not_empty.notify)
             if parent._sync_not_empty_waiting:
                 parent._sync_not_empty.notify()
 
@@ -617,7 +570,7 @@ class _AsyncQueueProxy(AsyncQueue[T]):
         async with parent._async_not_empty:
             with parent._sync_mutex:
                 if parent._is_shutdown:
-                    raise _AsyncQueueShutDown
+                    raise AsyncQueueShutDown
                 parent._get_loop()  # check the event loop
                 while not parent._qsize():
                     parent._async_not_empty_waiting += 1
@@ -628,7 +581,7 @@ class _AsyncQueueProxy(AsyncQueue[T]):
                         parent._sync_mutex.acquire()
                         parent._async_not_empty_waiting -= 1
                     if parent._is_shutdown:
-                        raise _AsyncQueueShutDown
+                        raise AsyncQueueShutDown
 
                 item = parent._get()
                 if parent._async_not_full_waiting:
@@ -646,15 +599,14 @@ class _AsyncQueueProxy(AsyncQueue[T]):
         parent._check_closing()
         with parent._sync_mutex:
             if parent._is_shutdown:
-                raise _AsyncQueueShutDown
+                raise AsyncQueueShutDown
             if not parent._qsize():
                 raise AsyncQueueEmpty
 
-            loop = parent._get_loop()
-
+            parent._get_loop()
             item = parent._get()
             if parent._async_not_full_waiting:
-                parent._notify_async(loop, parent._async_not_full.notify)
+                parent._notify_async(parent._async_not_full.notify)
             if parent._sync_not_full_waiting:
                 parent._sync_not_full.notify()
             return item
@@ -681,12 +633,7 @@ class _AsyncQueueProxy(AsyncQueue[T]):
             parent._unfinished_tasks -= 1
             if parent._unfinished_tasks == 0:
                 if parent._async_tasks_done_waiting:
-                    if parent._loop is not None:
-                        parent._call_soon_threadsafe(
-                            parent._notify_async,
-                            parent._loop,
-                            parent._async_tasks_done.notify_all,
-                        )
+                    parent._notify_async(parent._async_tasks_done.notify_all)
                 if parent._sync_tasks_done_waiting:
                     parent._sync_tasks_done.notify_all()
 
@@ -730,7 +677,7 @@ class _AsyncQueueProxy(AsyncQueue[T]):
         parent = self._parent
         parent._is_shutdown = True
         with parent._sync_mutex:
-            loop = parent._get_loop()
+            parent._get_loop()
             if immediate:
                 while parent._qsize():
                     parent._get()
@@ -738,12 +685,12 @@ class _AsyncQueueProxy(AsyncQueue[T]):
                         parent._unfinished_tasks -= 1
                 # release all blocked threads/tasks in `join()`
                 parent._sync_tasks_done.notify_all()
-                parent._notify_async(loop, parent._async_tasks_done.notify_all)
+                parent._notify_async(parent._async_tasks_done.notify_all)
             # All getters need to re-check queue-empty to raise ShutDown
             parent._sync_not_empty.notify_all()
             parent._sync_not_full.notify_all()
-            parent._notify_async(loop, parent._async_not_empty.notify_all)
-            parent._notify_async(loop, parent._async_not_full.notify_all)
+            parent._notify_async(parent._async_not_empty.notify_all)
+            parent._notify_async(parent._async_not_full.notify_all)
 
 
 class PriorityQueue(Queue[T]):
