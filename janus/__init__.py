@@ -139,7 +139,7 @@ class Queue(Generic[T]):
         return loop
 
     def shutdown(self, immediate: bool = False) -> None:
-        """Shut-down the queue, making queue gets and puts raise ShutDown.
+        """Shut-down the queue, making queue gets and puts raise an exception.
 
         By default, gets will only raise once the queue is empty. Set
         'immediate' to True to make gets raise immediately instead.
@@ -147,6 +147,9 @@ class Queue(Generic[T]):
         All blocked callers of put() and get() will be unblocked. If
         'immediate', a task is marked as done for each item remaining in
         the queue, which may unblock callers of join().
+
+        The raise exception is SyncQueueShutDown for sync api and AsyncQueueShutDown
+        for async one.
         """
         with self._sync_mutex:
             self._is_shutdown = True
@@ -467,7 +470,7 @@ class _SyncQueueProxy(SyncQueue[T]):
         return self.get(block=False)
 
     def shutdown(self, immediate: bool = False) -> None:
-        """Shut-down the queue, making queue gets and puts raise ShutDown.
+        """Shut-down the queue, making queue gets and puts raise an exception.
 
         By default, gets will only raise once the queue is empty. Set
         'immediate' to True to make gets raise immediately instead.
@@ -475,6 +478,9 @@ class _SyncQueueProxy(SyncQueue[T]):
         All blocked callers of put() and get() will be unblocked. If
         'immediate', a task is marked as done for each item remaining in
         the queue, which may unblock callers of join().
+
+        The raise exception is SyncQueueShutDown for sync api and AsyncQueueShutDown
+        for async one.
         """
         self._parent.shutdown(immediate)
 
@@ -675,7 +681,7 @@ class _AsyncQueueProxy(AsyncQueue[T]):
                         parent._async_tasks_done_waiting -= 1
 
     def shutdown(self, immediate: bool = False) -> None:
-        """Shut-down the queue, making queue gets and puts raise ShutDown.
+        """Shut-down the queue, making queue gets and puts raise an exception.
 
         By default, gets will only raise once the queue is empty. Set
         'immediate' to True to make gets raise immediately instead.
@@ -683,6 +689,9 @@ class _AsyncQueueProxy(AsyncQueue[T]):
         All blocked callers of put() and get() will be unblocked. If
         'immediate', a task is marked as done for each item remaining in
         the queue, which may unblock callers of join().
+
+        The raise exception is SyncQueueShutDown for sync api and AsyncQueueShutDown
+        for async one.
         """
         self._parent.shutdown(immediate)
 
