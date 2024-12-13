@@ -13,7 +13,7 @@ Changes
 
 .. towncrier release notes start
 
-2.0.0 (2024-12-XX)
+2.0.0 (2024-12-13)
 ------------------
 
 - Implement ``.shutdown(immediate=False)`` for both sync and async APIs #720
