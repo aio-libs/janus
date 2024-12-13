@@ -434,3 +434,189 @@ def test_sync_only_api():
     q = janus.Queue()
     q.sync_q.put(1)
     assert q.sync_q.get() == 1
+
+
+class TestQueueShutdown:
+    @pytest.mark.asyncio
+    async def test_shutdown_empty(self):
+        _q = janus.Queue()
+        q = _q.sync_q
+
+        q.shutdown()
+        with pytest.raises(janus.SyncQueueShutDown):
+            q.put("data")
+        with pytest.raises(janus.SyncQueueShutDown):
+            q.get()
+        with pytest.raises(janus.SyncQueueShutDown):
+            q.get_nowait()
+
+    @pytest.mark.asyncio
+    async def test_shutdown_nonempty(self):
+        _q = janus.Queue()
+        q = _q.sync_q
+
+        q.put("data")
+        q.shutdown()
+        q.get()
+        with pytest.raises(janus.SyncQueueShutDown):
+            q.get()
+
+    @pytest.mark.asyncio
+    async def test_shutdown_nonempty_get_nowait(self):
+        _q = janus.Queue()
+        q = _q.sync_q
+
+        q.put("data")
+        q.shutdown()
+        q.get_nowait()
+        with pytest.raises(janus.SyncQueueShutDown):
+            q.get_nowait()
+
+    @pytest.mark.asyncio
+    async def test_shutdown_immediate(self):
+        _q = janus.Queue()
+        q = _q.sync_q
+
+        q.put("data")
+        q.shutdown(immediate=True)
+        with pytest.raises(janus.SyncQueueShutDown):
+            q.get()
+        with pytest.raises(janus.SyncQueueShutDown):
+            q.get_nowait()
+
+    @pytest.mark.asyncio
+    async def test_shutdown_immediate_with_undone_tasks(self):
+        _q = janus.Queue()
+        q = _q.sync_q
+
+        q.put(1)
+        q.put(2)
+        # artificial .task_done() without .get() for covering specific codeline
+        # in .shutdown(True)
+        q.task_done()
+
+        q.shutdown(True)
+
+    @pytest.mark.asyncio
+    async def test_shutdown_putter(self):
+        loop = asyncio.get_running_loop()
+        _q = janus.Queue(maxsize=1)
+        q = _q.sync_q
+
+        q.put(1)
+
+        def putter():
+            q.put(2)
+
+        fut = loop.run_in_executor(None, putter)
+        # wait for the task start
+        await asyncio.sleep(0.01)
+
+        q.shutdown()
+
+        with pytest.raises(janus.SyncQueueShutDown):
+            await fut
+
+        await _q.aclose()
+
+    @pytest.mark.asyncio
+    async def test_shutdown_many_putters(self):
+        loop = asyncio.get_running_loop()
+        _q = janus.Queue(maxsize=1)
+        q = _q.sync_q
+
+        q.put(1)
+
+        def putter(n):
+            q.put(n)
+
+        futs = []
+        for i in range(2):
+            futs.append(loop.run_in_executor(None, putter, i))
+        # wait for the task start
+        await asyncio.sleep(0.01)
+
+        q.shutdown()
+
+        for fut in futs:
+            with pytest.raises(janus.SyncQueueShutDown):
+                await fut
+
+        await _q.aclose()
+
+    @pytest.mark.asyncio
+    async def test_shutdown_many_putters_with_timeout(self):
+        loop = asyncio.get_running_loop()
+        _q = janus.Queue(maxsize=1)
+        q = _q.sync_q
+
+        q.put(1)
+
+        def putter(n):
+            q.put(n, timeout=60)
+
+        futs = []
+        for i in range(2):
+            futs.append(loop.run_in_executor(None, putter, i))
+        # wait for the task start
+        await asyncio.sleep(0.01)
+
+        q.shutdown()
+
+        for fut in futs:
+            with pytest.raises(janus.SyncQueueShutDown):
+                await fut
+
+        await _q.aclose()
+
+    @pytest.mark.asyncio
+    async def test_shutdown_getter(self):
+        loop = asyncio.get_running_loop()
+        _q = janus.Queue()
+        q = _q.sync_q
+
+        def getter():
+            q.get()
+
+        fut = loop.run_in_executor(None, getter)
+        # wait for the task start
+        await asyncio.sleep(0.01)
+
+        q.shutdown()
+
+        with pytest.raises(janus.SyncQueueShutDown):
+            await fut
+
+        await _q.aclose()
+
+    @pytest.mark.asyncio
+    async def test_shutdown_getter_with_timeout(self):
+        loop = asyncio.get_running_loop()
+        _q = janus.Queue()
+        q = _q.sync_q
+
+        def getter():
+            q.get(timeout=60)
+
+        fut = loop.run_in_executor(None, getter)
+        # wait for the task start
+        await asyncio.sleep(0.01)
+
+        q.shutdown()
+
+        with pytest.raises(janus.SyncQueueShutDown):
+            await fut
+
+        await _q.aclose()
+
+    @pytest.mark.asyncio
+    async def test_shutdown_early_getter(self):
+        _q = janus.Queue()
+        q = _q.sync_q
+
+        q.shutdown()
+
+        with pytest.raises(janus.SyncQueueShutDown):
+            q.get()
+
+        await _q.aclose()

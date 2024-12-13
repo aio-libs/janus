@@ -13,6 +13,20 @@ Changes
 
 .. towncrier release notes start
 
+2.0.0 (2024-12-XX)
+------------------
+
+- Implement ``.shutdown(immediate=False)`` for both sync and async APIs #720
+
+  The change is not fully backward compatible:
+
+  1. If the queue is closed, ``janus.AsyncQueueShutDown`` and
+     ``janus.SyncQueueShutDown`` exceptions are raised instead of ``RuntimeError``.
+
+  2. Both sync and async ``.task_done()`` and ``.join()`` don't raise any exception
+     on queue shutdown/closing anymore; it is compatible with shutdown behavior
+     of stdlib sync and async queues.
+
 
 1.2.0 (2024-12-12)
 ------------------
