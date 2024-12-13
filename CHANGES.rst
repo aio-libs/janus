@@ -16,7 +16,7 @@ Changes
 2.0.0 (2024-12-XX)
 ------------------
 
-- Implement .shutdown(immediate=False) for both sync and async APIs #720
+- Implement ``.shutdown(immediate=False)`` for both sync and async APIs #720
 
   The change is not fully backward compatible:
 
