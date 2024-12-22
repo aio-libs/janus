@@ -135,7 +135,7 @@ class AsyncCondition(asyncio.Condition):
         task.add_done_callback(self.__pending.remove)
         self.__pending.append(task)
 
-    def __setup_notifier_threadsafe(self, method: Callable[[], None]):
+    def __setup_notifier_threadsafe(self, method: Callable[[], None]) -> None:
         loop = self._loop
         if loop is None or loop.is_closed():
             # async API is not available, nothing to notify
