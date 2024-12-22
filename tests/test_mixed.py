@@ -310,7 +310,7 @@ class TestMixedMode:
             for _ in range(4):
                 executor.submit(q.sync_q.get)
 
-            while q._sync_not_empty_waiting != 4:
+            while q._sync_not_empty.waiting != 4:
                 await asyncio.sleep(0.001)
 
             q.sync_q.put_nowait(1)
@@ -328,7 +328,7 @@ class TestMixedMode:
 
         tasks = [loop.create_task(q.async_q.get()) for _ in range(4)]
 
-        while q._async_not_empty_waiting != 4:
+        while q._async_not_empty.waiting != 4:
             await asyncio.sleep(0)
 
         q.sync_q.put_nowait(1)
@@ -351,7 +351,7 @@ class TestMixedMode:
             for _ in range(4):
                 executor.submit(q.sync_q.put, object())
 
-            while q._sync_not_full_waiting != 4:
+            while q._sync_not_full.waiting != 4:
                 await asyncio.sleep(0.001)
 
             q.sync_q.get_nowait()
@@ -371,7 +371,7 @@ class TestMixedMode:
 
         tasks = [loop.create_task(q.async_q.put(object())) for _ in range(4)]
 
-        while q._async_not_full_waiting != 4:
+        while q._async_not_full.waiting != 4:
             await asyncio.sleep(0)
 
         q.sync_q.get_nowait()
