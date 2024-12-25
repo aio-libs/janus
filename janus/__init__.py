@@ -121,7 +121,13 @@ class AsyncCondition:
         self._pending = pending
         self.waiting = 0
 
+        if sys.version_info < (3, 10):
+            self._get_loop()
+
     async def wait(self) -> Literal[True]:
+        if sys.version_info >= (3, 10):
+            self._get_loop()
+
         self.waiting += 1
         self._mutex.release()
         try:
@@ -129,6 +135,17 @@ class AsyncCondition:
         finally:
             self._mutex.acquire()
             self.waiting -= 1
+
+    def _get_loop(self) -> asyncio.AbstractEventLoop:
+        # Warning!
+        # The function should be called when sync_mutex is locked,
+        # otherwise the code is not thread-safe
+        loop = asyncio.get_running_loop()
+        if self._loop is None:
+            self._loop = loop
+        if loop is not self._loop:
+            raise RuntimeError(f"{self!r} is bound to a different event loop")
+        return loop
 
     async def _do_notifier(self, method: Callable[[], None]) -> None:
         async with self._parent:
@@ -202,23 +219,6 @@ class Queue(Generic[T]):
 
         self._sync_queue = _SyncQueueProxy(self)
         self._async_queue = _AsyncQueueProxy(self)
-
-        if sys.version_info < (3, 10):
-            self._get_loop()
-
-    def _get_loop(self) -> asyncio.AbstractEventLoop:
-        # Warning!
-        # The function should be called when self._sync_mutex is locked,
-        # otherwise the code is not thread-safe
-        loop = asyncio.get_running_loop()
-        if self._loop is None:
-            self._loop = loop
-            self._async_not_empty._loop = loop
-            self._async_not_full._loop = loop
-            self._async_tasks_done._loop = loop
-        if loop is not self._loop:
-            raise RuntimeError(f"{self!r} is bound to a different event loop")
-        return loop
 
     def shutdown(self, immediate: bool = False) -> None:
         """Shut-down the queue, making queue gets and puts raise an exception.
@@ -570,8 +570,6 @@ class _AsyncQueueProxy(AsyncQueue[T]):
         This method is a coroutine.
         """
         parent = self._parent
-        with parent._sync_mutex:
-            parent._get_loop()
         async with parent._async_mutex:
             with parent._sync_mutex:
                 if parent._is_shutdown:
@@ -591,7 +589,6 @@ class _AsyncQueueProxy(AsyncQueue[T]):
         """
         parent = self._parent
         with parent._sync_mutex:
-            parent._get_loop()
             if parent._is_shutdown:
                 raise AsyncQueueShutDown
             if 0 < parent._maxsize <= parent._qsize():
@@ -608,8 +605,6 @@ class _AsyncQueueProxy(AsyncQueue[T]):
         This method is a coroutine.
         """
         parent = self._parent
-        with parent._sync_mutex:
-            parent._get_loop()
         async with parent._async_mutex:
             with parent._sync_mutex:
                 if parent._is_shutdown and not parent._qsize():
@@ -630,7 +625,6 @@ class _AsyncQueueProxy(AsyncQueue[T]):
         """
         parent = self._parent
         with parent._sync_mutex:
-            parent._get_loop()
             if parent._is_shutdown and not parent._qsize():
                 raise AsyncQueueShutDown
             if not parent._qsize():
@@ -656,7 +650,6 @@ class _AsyncQueueProxy(AsyncQueue[T]):
         """
         parent = self._parent
         with parent._sync_mutex:
-            parent._get_loop()
             if parent._unfinished_tasks <= 0:
                 raise ValueError("task_done() called too many times")
             parent._unfinished_tasks -= 1
@@ -673,8 +666,6 @@ class _AsyncQueueProxy(AsyncQueue[T]):
         When the count of unfinished tasks drops to zero, join() unblocks.
         """
         parent = self._parent
-        with parent._sync_mutex:
-            parent._get_loop()
         async with parent._async_mutex:
             with parent._sync_mutex:
                 while parent._unfinished_tasks:
