@@ -168,9 +168,6 @@ class AsyncCondition:
     def notify(self) -> None:
         self._parent.notify()
 
-    def notify_all(self) -> None:
-        self._parent.notify_all()
-
     def notify_soon(self) -> None:
         # Warning!
         # The function should be called when sync_lock is locked,
