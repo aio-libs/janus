@@ -21,16 +21,16 @@ class TestMixedMode:
     async def test_get_loop_ok(self):
         q = janus.Queue()
         loop = asyncio.get_running_loop()
-        assert q._get_loop() is loop
-        assert q._loop is loop
+        assert q._async_not_empty._get_loop() is loop
+        assert q._async_not_empty._loop is loop
 
     @pytest.mark.asyncio
     async def test_get_loop_different_loop(self):
         q = janus.Queue()
         # emulate binding another loop
-        loop = q._loop = asyncio.new_event_loop()
+        loop = q._async_not_empty._loop = asyncio.new_event_loop()
         with pytest.raises(RuntimeError, match="is bound to a different event loop"):
-            q._get_loop()
+            q._async_not_empty._get_loop()
         loop.close()
 
     @pytest.mark.asyncio
