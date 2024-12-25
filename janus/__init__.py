@@ -88,20 +88,26 @@ class AsyncQueue(BaseQueue[T], Protocol[T]):
     async def join(self) -> None: ...
 
 
-class SyncCondition(threading.Condition):
+class SyncCondition:
     def __init__(self, lock: threading.Lock) -> None:
-        super().__init__(lock)
+        self._parent = threading.Condition(lock)
         self.waiting = 0
 
     def wait(self, timeout: OptFloat = None) -> bool:
         self.waiting += 1
         try:
-            return super().wait(timeout)
+            return self._parent.wait(timeout)
         finally:
             self.waiting -= 1
 
+    def notify(self) -> None:
+        self._parent.notify()
 
-class AsyncCondition(asyncio.Condition):
+    def notify_all(self) -> None:
+        self._parent.notify_all()
+
+
+class AsyncCondition:
     _loop: Optional[asyncio.AbstractEventLoop] = None
 
     def __init__(
@@ -110,51 +116,57 @@ class AsyncCondition(asyncio.Condition):
         async_lock: asyncio.Lock,
         pending: deque[asyncio.Future[None]]
     ) -> None:
-        super().__init__(async_lock)
-        self.__mutex = sync_lock
-        self.__pending = pending
+        self._parent = asyncio.Condition(async_lock)
+        self._mutex = sync_lock
+        self._pending = pending
         self.waiting = 0
 
     async def wait(self) -> Literal[True]:
         self.waiting += 1
-        self.__mutex.release()
+        self._mutex.release()
         try:
-            return await super().wait()
+            return await self._parent.wait()
         finally:
-            self.__mutex.acquire()
+            self._mutex.acquire()
             self.waiting -= 1
 
-    async def __do_notifier(self, method: Callable[[], None]) -> None:
-        async with self:
+    async def _do_notifier(self, method: Callable[[], None]) -> None:
+        async with self._parent:
             method()
 
-    def __setup_notifier(
+    def _setup_notifier(
         self, loop: asyncio.AbstractEventLoop, method: Callable[[], None]
     ) -> None:
-        task = loop.create_task(self.__do_notifier(method))
-        task.add_done_callback(self.__pending.remove)
-        self.__pending.append(task)
+        task = loop.create_task(self._do_notifier(method))
+        task.add_done_callback(self._pending.remove)
+        self._pending.append(task)
 
-    def __setup_notifier_threadsafe(self, method: Callable[[], None]) -> None:
+    def _setup_notifier_threadsafe(self, method: Callable[[], None]) -> None:
         loop = self._loop
         if loop is None or loop.is_closed():
             # async API is not available, nothing to notify
             return
-        loop.call_soon_threadsafe(self.__setup_notifier, loop, method)
+        loop.call_soon_threadsafe(self._setup_notifier, loop, method)
+
+    def notify(self) -> None:
+        self._parent.notify()
+
+    def notify_all(self) -> None:
+        self._parent.notify_all()
 
     def notify_soon(self) -> None:
         # Warning!
         # The function should be called when sync_lock is locked,
         # otherwise the code is not thread-safe
         if self.waiting:
-            self.__setup_notifier_threadsafe(self.notify)
+            self._setup_notifier_threadsafe(self._parent.notify)
 
     def notify_all_soon(self) -> None:
         # Warning!
         # The function should be called when sync_lock is locked,
         # otherwise the code is not thread-safe
         if self.waiting:
-            self.__setup_notifier_threadsafe(self.notify_all)
+            self._setup_notifier_threadsafe(self._parent.notify_all)
 
 
 class Queue(Generic[T]):
