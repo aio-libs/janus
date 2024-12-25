@@ -187,8 +187,6 @@ class AsyncCondition:
 
 
 class Queue(Generic[T]):
-    _loop: Optional[asyncio.AbstractEventLoop] = None
-
     def __init__(self, maxsize: int = 0) -> None:
         self._maxsize = maxsize
         self._is_shutdown = False
