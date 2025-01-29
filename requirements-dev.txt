@@ -9,7 +9,7 @@ mypy==1.14.1
 pyroma==4.2
 pytest-cov==6.0.0
 pytest==8.3.4
-pytest-asyncio==0.25.2
+pytest-asyncio==0.25.3
 pytest-codspeed==3.1.2
 isort==6.0.0
 tox==4.24.1
