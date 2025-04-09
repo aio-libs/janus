@@ -13,4 +13,4 @@ pytest-asyncio==0.26.0
 pytest-codspeed==3.2.0
 isort==6.0.1
 tox==4.25.0
-wheel==0.45.1
+wheel==0.46.1
