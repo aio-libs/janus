@@ -8,7 +8,7 @@ from heapq import heappop, heappush
 from queue import Empty as SyncQueueEmpty
 from queue import Full as SyncQueueFull
 from time import monotonic
-from typing import Any, Callable, Generic, Optional, Protocol, TypeAlias, TypeVar
+from typing import Any, Callable, Generic, Optional, Protocol, TypeVar
 
 if sys.version_info >= (3, 13):
     from asyncio import QueueShutDown as AsyncQueueShutDown
@@ -41,19 +41,15 @@ __all__ = (
     "BaseQueue",
 )
 
-_contra_T = TypeVar("_contra_T", contravariant=True)
-
-class SupportsLT(Protocol[_contra_T]):
-    def __lt__(self, other: _contra_T):  ...
+class SupportsLT(Protocol):
+    def __lt__(self, other: Any):  ...
 
 
-class SupportsGT(Protocol[_contra_T]):
-    def __gt__(self, other: _contra_T):  ...
+class SupportsGT(Protocol):
+    def __gt__(self, other: Any):  ...
 
 
-RichComparable: TypeAlias = SupportsGT[Any] | SupportsLT[Any]
-
-RichComparableT = TypeVar("RichComparableT", bound=RichComparable)
+RichComparableT = TypeVar("RichComparableT", bound=SupportsGT | SupportsLT)
 
 T = TypeVar("T")
 OptFloat = Optional[float]
