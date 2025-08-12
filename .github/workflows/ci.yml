@@ -31,7 +31,7 @@ jobs:
     timeout-minutes: 5
     steps:
     - name: Checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
     - name: Setup Python
       uses: actions/setup-python@v5
       with:
@@ -63,7 +63,7 @@ jobs:
     timeout-minutes: 15
     steps:
     - name: Checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
     - name: Setup Python ${{ matrix.python-version }}
       uses: actions/setup-python@v5
       with:
@@ -98,7 +98,7 @@ jobs:
     timeout-minutes: 15
     steps:
     - name: Checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
     - name: Setup Python 3.13
       uses: actions/setup-python@v5
       with:
@@ -136,7 +136,7 @@ jobs:
       with:
         jobs: ${{ toJSON(needs) }}
     - name: Checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
     - name: Upload coverage
       uses: aio-libs/upload-coverage@v24.10.1
       with:
@@ -156,7 +156,7 @@ jobs:
       url: https://pypi.org/p/${{ env.PROJECT_NAME }}
     steps:
     - name: Checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
     - name: Setup Python
       uses: actions/setup-python@v5
       with:
