@@ -8,7 +8,7 @@ from heapq import heappop, heappush
 from queue import Empty as SyncQueueEmpty
 from queue import Full as SyncQueueFull
 from time import monotonic
-from typing import Callable, Generic, Optional, Protocol, TypeVar
+from typing import Any, Callable, Generic, Optional, Protocol, TypeVar
 
 if sys.version_info >= (3, 13):
     from asyncio import QueueShutDown as AsyncQueueShutDown
@@ -41,6 +41,15 @@ __all__ = (
     "BaseQueue",
 )
 
+class SupportsLT(Protocol):
+    def __lt__(self, other: Any):  ...
+
+
+class SupportsGT(Protocol):
+    def __gt__(self, other: Any):  ...
+
+
+RichComparableT = TypeVar("RichComparableT", bound=SupportsGT | SupportsLT)
 
 T = TypeVar("T")
 OptFloat = Optional[float]
@@ -696,7 +705,7 @@ class _AsyncQueueProxy(AsyncQueue[T]):
         self._parent.shutdown(immediate)
 
 
-class PriorityQueue(Queue[T]):
+class PriorityQueue(Queue[RichComparableT]):
     """Variant of Queue that retrieves open entries in priority order
     (lowest first).
 
@@ -705,15 +714,15 @@ class PriorityQueue(Queue[T]):
     """
 
     def _init(self, maxsize: int) -> None:
-        self._heap_queue: list[T] = []
+        self._heap_queue: list[RichComparableT] = []
 
     def _qsize(self) -> int:
         return len(self._heap_queue)
 
-    def _put(self, item: T) -> None:
+    def _put(self, item: RichComparableT) -> None:
         heappush(self._heap_queue, item)
 
-    def _get(self) -> T:
+    def _get(self) -> RichComparableT:
         return heappop(self._heap_queue)
 
 
