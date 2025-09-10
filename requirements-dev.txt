@@ -7,7 +7,7 @@ docutils==0.22
 flake8==7.3.0
 mypy==1.17.1
 pyroma==5.0
-pytest-cov==6.3.0
+pytest-cov==7.0.0
 pytest==8.4.2
 pytest-asyncio==1.1.0
 pytest-codspeed==4.0.0
