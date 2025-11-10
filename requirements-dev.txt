@@ -1,6 +1,6 @@
 -e .
 backports.asyncio.runner==1.2.0; python_version < "3.11"
-black==25.9.0
+black==25.11.0
 bandit==1.8.6
 coverage==7.10.6
 docutils==0.22.3
