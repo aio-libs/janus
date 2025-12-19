@@ -3,7 +3,7 @@ backports.asyncio.runner==1.2.0; python_version < "3.11"
 black==25.11.0
 bandit==1.8.6
 coverage==7.10.6
-docutils==0.22.3
+docutils==0.22.4
 flake8==7.3.0
 mypy==1.17.1
 pyroma==5.0.1
