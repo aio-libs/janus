@@ -1,6 +1,6 @@
 -e .
 backports.asyncio.runner==1.2.0; python_version < "3.11"
-black==25.11.0
+black==26.3.1
 bandit==1.8.6
 coverage==7.10.6
 docutils==0.23
@@ -8,7 +8,7 @@ flake8==7.3.0
 mypy==1.17.1
 pyroma==5.0.1
 pytest-cov==7.1.0
-pytest==8.4.2
+pytest==9.0.3
 pytest-asyncio==1.2.0
 pytest-codspeed==5.0.3
 isort==6.1.0
