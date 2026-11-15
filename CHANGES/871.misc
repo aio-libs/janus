@@ -1,0 +1,1 @@
+Modernized code and tests for the Python 3.11+ baseline: use ``asyncio.timeout()``, ``asyncio.create_task()`` and context-manager ``pytest.raises()``, and dropped stale pytest warning filters.

@@ -238,7 +238,8 @@ class TestMixedMode:
     async def test_async_join_after_closing(self):
         q = janus.Queue()
         q.close()
-        await asyncio.wait_for(q.async_q.join(), timeout=0.1)
+        async with asyncio.timeout(0.1):
+            await q.async_q.join()
 
         await q.wait_closed()
 
@@ -251,7 +252,8 @@ class TestMixedMode:
         await asyncio.sleep(0.01)  # ensure tasks are blocking
 
         q.close()
-        await asyncio.wait_for(task, timeout=0.1)
+        async with asyncio.timeout(0.1):
+            await task
 
         await q.wait_closed()
 
@@ -262,7 +264,8 @@ class TestMixedMode:
         q.sync_q.put(1)
 
         q.close()
-        await asyncio.wait_for(loop.run_in_executor(None, q.sync_q.join), timeout=0.1)
+        async with asyncio.timeout(0.1):
+            await loop.run_in_executor(None, q.sync_q.join)
 
         await q.wait_closed()
 
@@ -277,7 +280,8 @@ class TestMixedMode:
 
         q.close()
 
-        await asyncio.wait_for(fut, timeout=0.1)
+        async with asyncio.timeout(0.1):
+            await fut
 
         await q.wait_closed()
 
