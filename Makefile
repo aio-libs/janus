@@ -1,31 +1,28 @@
-develop:
-	python setup.py develop
+.PHONY: sync lint fmt mypy test vtest cov build
 
-lint flake: checkrst  pyroma bandit mypy
-	flake8 janus tests
+sync:
+	uv sync
 
-test: flake develop
-	pytest tests
-
-vtest: flake develop
-	pytest -v tests
+lint: mypy
+	uv run ruff check
+	uv run ruff format --check
 
 fmt:
-	isort -rc janus tests setup.py
-	black janus tests setup.py
-
-cov: flake develop
-	pytest --cov=janus --cov=tests --cov-report=term --cov-report=html
-	@echo "open file://`pwd`/coverage/index.html"
-
-checkrst:
-	python setup.py check --restructuredtext
-
-pyroma:
-	pyroma -d .
-
-bandit:
-	bandit -r ./janus
+	uv run ruff check --fix
+	uv run ruff format
 
 mypy:
-	mypy janus --strict
+	uv run mypy
+
+test: lint
+	uv run pytest tests
+
+vtest: lint
+	uv run pytest -v tests
+
+cov: lint
+	uv run pytest --cov=janus --cov=tests --cov-report=term --cov-report=html
+	@echo "open file://`pwd`/coverage/index.html"
+
+build:
+	uv build

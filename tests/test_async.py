@@ -1,8 +1,8 @@
 """Tests for queues.py"""
 
 import asyncio
-import time
 import re
+import time
 
 import pytest
 
@@ -10,7 +10,7 @@ import janus
 
 
 async def close(_q):
-    for i in range(5):
+    for _i in range(5):
         time.sleep(0.001)
         if not _q._sync_mutex.locked():
             break
@@ -660,7 +660,7 @@ class _QueueJoinTestMixin:
 
         # close running generators
         running = False
-        for i in range(len(tasks)):
+        for _ in range(len(tasks)):
             q.put_nowait(0)
         await asyncio.wait(tasks)
 
