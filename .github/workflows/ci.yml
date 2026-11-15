@@ -94,7 +94,8 @@ jobs:
 
   benchmark:
     name: Benchmark
-    runs-on: ubuntu-latest
+    # CodSpeed runner doesn't support Ubuntu 26.04 yet
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
     - name: Checkout
