@@ -129,7 +129,7 @@ jobs:
         python-version: 3.13
     - name: Make dists
       run: |
-        uv build
+        uv build --no-create-gitignore
     - name: Get version
       id: version
       run: |
