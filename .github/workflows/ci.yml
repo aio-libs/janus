@@ -125,8 +125,6 @@ jobs:
       uses: actions/checkout@v7
     - name: Setup uv
       uses: astral-sh/setup-uv@v10.3.3
-      with:
-        python-version: 3.13
     - name: Make dists
       run: |
         uv build --no-create-gitignore
