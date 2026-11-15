@@ -16,16 +16,14 @@ if sys.version_info >= (3, 13):
     from asyncio import QueueShutDown as AsyncQueueShutDown
     from queue import ShutDown as SyncQueueShutDown
 else:
+    # Python 3.11-3.12 stdlib queues have no shutdown support,
+    # provide compatible replacements.
 
-    class QueueShutDown(Exception):
-        pass
+    class AsyncQueueShutDown(Exception):
+        """Raised when put/get is called on a shut-down async queue."""
 
-    AsyncQueueShutDown = QueueShutDown
-
-    class ShutDown(Exception):
-        pass
-
-    SyncQueueShutDown = ShutDown
+    class SyncQueueShutDown(Exception):
+        """Raised when put/get is called on a shut-down sync queue."""
 
 
 __version__ = importlib.metadata.version("janus")
