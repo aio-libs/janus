@@ -1,5 +1,4 @@
 import asyncio
-import sys
 
 from concurrent.futures import ThreadPoolExecutor
 
@@ -9,14 +8,6 @@ import janus
 
 
 class TestMixedMode:
-    @pytest.mark.skipif(
-        sys.version_info >= (3, 10),
-        reason="Python 3.10+ supports delayed initialization",
-    )
-    def test_ctor_noloop(self):
-        with pytest.raises(RuntimeError):
-            janus.Queue()
-
     @pytest.mark.asyncio
     async def test_get_loop_ok(self):
         q = janus.Queue()
