@@ -13,6 +13,22 @@ Changes
 
 .. towncrier release notes start
 
+2.1.0 (2026-11-15)
+------------------
+
+Deprecations and Removals
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- Dropped support for Python 3.9 and 3.10; added support for Python 3.11–3.15. (`#867 <https://github.com/aio-libs/janus/issues/867>`_)
+
+
+Misc
+~~~~
+
+- Switched development tooling to uv and ruff, and the build backend from setuptools to ``uv_build``. (`#869 <https://github.com/aio-libs/janus/issues/869>`_)
+- Modernized code and tests for the Python 3.11+ baseline: use ``asyncio.timeout()``, ``asyncio.create_task()`` and context-manager ``pytest.raises()``, and dropped stale pytest warning filters. (`#871 <https://github.com/aio-libs/janus/issues/871>`_)
+
+
 2.0.0 (2024-12-13)
 ------------------
 

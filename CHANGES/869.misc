@@ -1,1 +1,0 @@
-Switched development tooling to uv and ruff, and the build backend from setuptools to ``uv_build``.
