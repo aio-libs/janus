@@ -1,11 +1,7 @@
 import asyncio
-import sys
-import janus
+from asyncio import Runner
 
-if sys.version_info >= (3, 11):
-    from asyncio import Runner
-else:
-    from backports.asyncio.runner import Runner
+import janus
 
 
 def test_bench_sync_put_async_get(benchmark):

@@ -3,7 +3,6 @@
 import asyncio
 import queue
 import re
-import sys
 import threading
 import time
 from unittest.mock import patch
@@ -60,10 +59,10 @@ class BlockingTestMixin:
         self.result = block_func(*block_args)
         # If block_func returned before our thread made the call, we failed!
         if not self.t.startedEvent.is_set():
-            pytest.fail("blocking function '%r' appeared not to block" % block_func)
+            pytest.fail(f"blocking function '{block_func!r}' appeared not to block")
         self.t.join(10)  # make sure the thread terminates
         if self.t.is_alive():
-            pytest.fail("trigger function '%r' appeared to not return" % trigger_func)
+            pytest.fail(f"trigger function '{trigger_func!r}' appeared to not return")
         return self.result
 
     # Call this instead if block_func is supposed to raise an exception.
@@ -83,12 +82,12 @@ class BlockingTestMixin:
             except expected_exception_class:
                 raise
             else:
-                pytest.fail("expected exception of kind %r" % expected_exception_class)
+                pytest.fail(f"expected exception of kind {expected_exception_class!r}")
         finally:
             self.t.join(10)  # make sure the thread terminates
             if self.t.is_alive():
                 pytest.fail(
-                    "trigger function '%r' appeared to not return" % trigger_func
+                    f"trigger function '{trigger_func!r}' appeared to not return"
                 )
             if not self.t.startedEvent.is_set():
                 pytest.fail("trigger thread ended but event never set")
@@ -139,7 +138,7 @@ class BaseQueueTestMixin(BlockingTestMixin):
         self.do_blocking_test(q.put, (full,), q.get, ())
         self.do_blocking_test(q.put, (full, True, 10), q.get, ())
         # Empty it
-        for i in range(QUEUE_SIZE):
+        for _ in range(QUEUE_SIZE):
             q.get()
         assert not q.qsize()
         try:
@@ -173,13 +172,13 @@ class BaseQueueTestMixin(BlockingTestMixin):
 
     def queue_join_test(self, q):
         self.cum = 0
-        for i in (0, 1):
+        for _ in (0, 1):
             threading.Thread(target=self.worker, args=(q,)).start()
         for i in range(100):
             q.put(i)
         q.join()
         assert self.cum == sum(range(100))
-        for i in (0, 1):
+        for _ in (0, 1):
             q.put(-1)  # instruct the threads to close
         q.join()  # verify that you can join twice
 
@@ -235,12 +234,12 @@ class BaseQueueTestMixin(BlockingTestMixin):
     async def test_nowait(self):
         _q = self.type2test(QUEUE_SIZE)
         q = _q.sync_q
-        for i in range(QUEUE_SIZE):
+        for _i in range(QUEUE_SIZE):
             q.put_nowait(1)
         with pytest.raises(queue.Full):
             q.put_nowait(1)
 
-        for i in range(QUEUE_SIZE):
+        for _i in range(QUEUE_SIZE):
             q.get_nowait()
         with pytest.raises(queue.Empty):
             q.get_nowait()
@@ -362,7 +361,7 @@ class TestFailingQueue(BlockingTestMixin):
         # Test a blocking put
         self.do_blocking_test(q.put, ("full",), q.get, ())
         # Empty it
-        for i in range(QUEUE_SIZE):
+        for _ in range(QUEUE_SIZE):
             q.get()
         assert not q.qsize()
         q.put("first")
@@ -426,10 +425,6 @@ class TestFailingQueue(BlockingTestMixin):
         await _q.wait_closed()
 
 
-@pytest.mark.skipif(
-    sys.version_info < (3, 10),
-    reason="Python 3.10+ is required",
-)
 def test_sync_only_api():
     q = janus.Queue()
     q.sync_q.put(1)

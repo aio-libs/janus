@@ -1,0 +1,8 @@
+*
+!.gitignore
+!*.feature
+!*.bugfix
+!*.doc
+!*.removal
+!*.misc
+!README.rst

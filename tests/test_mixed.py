@@ -1,6 +1,4 @@
 import asyncio
-import sys
-
 from concurrent.futures import ThreadPoolExecutor
 
 import pytest
@@ -9,14 +7,6 @@ import janus
 
 
 class TestMixedMode:
-    @pytest.mark.skipif(
-        sys.version_info >= (3, 10),
-        reason="Python 3.10+ supports delayed initialization",
-    )
-    def test_ctor_noloop(self):
-        with pytest.raises(RuntimeError):
-            janus.Queue()
-
     @pytest.mark.asyncio
     async def test_get_loop_ok(self):
         q = janus.Queue()
@@ -84,7 +74,7 @@ class TestMixedMode:
 
             await f
 
-        for i in range(3):
+        for _i in range(3):
             await go()
 
         q.close()
@@ -133,7 +123,7 @@ class TestMixedMode:
             await f
             assert q.async_q.empty()
 
-        for i in range(3):
+        for _i in range(3):
             await go()
 
         q.close()
@@ -160,7 +150,7 @@ class TestMixedMode:
 
             await f
 
-        for i in range(3):
+        for _i in range(3):
             await go()
 
         q.close()
@@ -187,7 +177,7 @@ class TestMixedMode:
             await f
             assert q.async_q.empty()
 
-        for i in range(3):
+        for _i in range(3):
             await go()
 
         q.close()
@@ -208,29 +198,19 @@ class TestMixedMode:
         q = janus.Queue()
         q.close()
 
-        with pytest.raises(
-            janus.SyncQueueShutDown
-        ):
+        with pytest.raises(janus.SyncQueueShutDown):
             q.sync_q.put(5)
 
-        with pytest.raises(
-            janus.SyncQueueShutDown
-        ):
+        with pytest.raises(janus.SyncQueueShutDown):
             q.sync_q.get()
 
-        with pytest.raises(
-            janus.AsyncQueueShutDown
-        ):
+        with pytest.raises(janus.AsyncQueueShutDown):
             await q.async_q.put(5)
 
-        with pytest.raises(
-            janus.AsyncQueueShutDown
-        ):
+        with pytest.raises(janus.AsyncQueueShutDown):
             q.async_q.put_nowait(5)
 
-        with pytest.raises(
-            janus.AsyncQueueShutDown
-        ):
+        with pytest.raises(janus.AsyncQueueShutDown):
             q.async_q.get_nowait()
 
         await q.wait_closed()
@@ -258,7 +238,8 @@ class TestMixedMode:
     async def test_async_join_after_closing(self):
         q = janus.Queue()
         q.close()
-        await asyncio.wait_for(q.async_q.join(), timeout=0.1)
+        async with asyncio.timeout(0.1):
+            await q.async_q.join()
 
         await q.wait_closed()
 
@@ -271,7 +252,8 @@ class TestMixedMode:
         await asyncio.sleep(0.01)  # ensure tasks are blocking
 
         q.close()
-        await asyncio.wait_for(task, timeout=0.1)
+        async with asyncio.timeout(0.1):
+            await task
 
         await q.wait_closed()
 
@@ -282,7 +264,8 @@ class TestMixedMode:
         q.sync_q.put(1)
 
         q.close()
-        await asyncio.wait_for(loop.run_in_executor(None, q.sync_q.join), timeout=0.1)
+        async with asyncio.timeout(0.1):
+            await loop.run_in_executor(None, q.sync_q.join)
 
         await q.wait_closed()
 
@@ -297,7 +280,8 @@ class TestMixedMode:
 
         q.close()
 
-        await asyncio.wait_for(fut, timeout=0.1)
+        async with asyncio.timeout(0.1):
+            await fut
 
         await q.wait_closed()
 

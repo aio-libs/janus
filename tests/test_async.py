@@ -1,8 +1,8 @@
 """Tests for queues.py"""
 
 import asyncio
-import time
 import re
+import time
 
 import pytest
 
@@ -10,7 +10,7 @@ import janus
 
 
 async def close(_q):
-    for i in range(5):
+    for _i in range(5):
         time.sleep(0.001)
         if not _q._sync_mutex.locked():
             break
@@ -169,7 +169,7 @@ class TestQueueGetTests:
         fut = loop.create_future()
 
         async def put():
-            t = asyncio.ensure_future(q.put(2))
+            t = asyncio.create_task(q.put(2))
             await asyncio.sleep(0.01)
             fut.set_result(None)
             return t
@@ -226,7 +226,8 @@ class TestQueueGetTests:
     @pytest.mark.asyncio
     async def test_nonblocking_get_exception(self):
         _q = janus.Queue()
-        pytest.raises(asyncio.QueueEmpty, _q.async_q.get_nowait)
+        with pytest.raises(asyncio.QueueEmpty):
+            _q.async_q.get_nowait()
 
         await close(_q)
 
@@ -237,7 +238,8 @@ class TestQueueGetTests:
         q = _q.async_q
 
         async def queue_get():
-            return await asyncio.wait_for(q.get(), 0.051)
+            async with asyncio.timeout(0.051):
+                return await q.get()
 
         async def test():
             get_task = loop.create_task(queue_get())
@@ -347,7 +349,8 @@ class TestQueuePut:
         _q = janus.Queue(maxsize=1)
         q = _q.async_q
         q.put_nowait(1)
-        pytest.raises(asyncio.QueueFull, q.put_nowait, 2)
+        with pytest.raises(asyncio.QueueFull):
+            q.put_nowait(2)
 
         await close(_q)
 
@@ -358,7 +361,8 @@ class TestQueuePut:
         q.put_nowait(1)
         q.put_nowait(2)
         assert q.full()
-        pytest.raises(asyncio.QueueFull, q.put_nowait, 3)
+        with pytest.raises(asyncio.QueueFull):
+            q.put_nowait(3)
 
         _q.close()
         await _q.wait_closed()
@@ -660,7 +664,7 @@ class _QueueJoinTestMixin:
 
         # close running generators
         running = False
-        for i in range(len(tasks)):
+        for _ in range(len(tasks)):
             q.put_nowait(0)
         await asyncio.wait(tasks)
 
