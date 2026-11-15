@@ -1,5 +1,6 @@
 include LICENSE
 include CHANGES.rst
+prune CHANGES
 include README.rst
 include Makefile
 graft janus
