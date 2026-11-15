@@ -1,19 +1,22 @@
 import asyncio
+import importlib.metadata
 import sys
 import threading
 from asyncio import QueueEmpty as AsyncQueueEmpty
 from asyncio import QueueFull as AsyncQueueFull
 from collections import deque
+from collections.abc import Callable
 from heapq import heappop, heappush
 from queue import Empty as SyncQueueEmpty
 from queue import Full as SyncQueueFull
 from time import monotonic
-from typing import Callable, Generic, Optional, Protocol, TypeVar
+from typing import Generic, Protocol, TypeVar
 
 if sys.version_info >= (3, 13):
     from asyncio import QueueShutDown as AsyncQueueShutDown
     from queue import ShutDown as SyncQueueShutDown
 else:
+
     class QueueShutDown(Exception):
         pass
 
@@ -25,7 +28,7 @@ else:
     SyncQueueShutDown = ShutDown
 
 
-__version__ = "2.0.0"
+__version__ = importlib.metadata.version("janus")
 __all__ = (
     "Queue",
     "PriorityQueue",
@@ -43,7 +46,7 @@ __all__ = (
 
 
 T = TypeVar("T")
-OptFloat = Optional[float]
+OptFloat = float | None
 
 
 class BaseQueue(Protocol[T]):
@@ -72,7 +75,6 @@ class BaseQueue(Protocol[T]):
 
 
 class SyncQueue(BaseQueue[T], Protocol[T]):
-
     def put(self, item: T, block: bool = True, timeout: OptFloat = None) -> None: ...
 
     def get(self, block: bool = True, timeout: OptFloat = None) -> T: ...
@@ -89,7 +91,7 @@ class AsyncQueue(BaseQueue[T], Protocol[T]):
 
 
 class Queue(Generic[T]):
-    _loop: Optional[asyncio.AbstractEventLoop] = None
+    _loop: asyncio.AbstractEventLoop | None = None
 
     def __init__(self, maxsize: int = 0) -> None:
         self._maxsize = maxsize

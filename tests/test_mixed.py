@@ -1,5 +1,4 @@
 import asyncio
-
 from concurrent.futures import ThreadPoolExecutor
 
 import pytest
@@ -75,7 +74,7 @@ class TestMixedMode:
 
             await f
 
-        for i in range(3):
+        for _i in range(3):
             await go()
 
         q.close()
@@ -124,7 +123,7 @@ class TestMixedMode:
             await f
             assert q.async_q.empty()
 
-        for i in range(3):
+        for _i in range(3):
             await go()
 
         q.close()
@@ -151,7 +150,7 @@ class TestMixedMode:
 
             await f
 
-        for i in range(3):
+        for _i in range(3):
             await go()
 
         q.close()
@@ -178,7 +177,7 @@ class TestMixedMode:
             await f
             assert q.async_q.empty()
 
-        for i in range(3):
+        for _i in range(3):
             await go()
 
         q.close()
@@ -199,29 +198,19 @@ class TestMixedMode:
         q = janus.Queue()
         q.close()
 
-        with pytest.raises(
-            janus.SyncQueueShutDown
-        ):
+        with pytest.raises(janus.SyncQueueShutDown):
             q.sync_q.put(5)
 
-        with pytest.raises(
-            janus.SyncQueueShutDown
-        ):
+        with pytest.raises(janus.SyncQueueShutDown):
             q.sync_q.get()
 
-        with pytest.raises(
-            janus.AsyncQueueShutDown
-        ):
+        with pytest.raises(janus.AsyncQueueShutDown):
             await q.async_q.put(5)
 
-        with pytest.raises(
-            janus.AsyncQueueShutDown
-        ):
+        with pytest.raises(janus.AsyncQueueShutDown):
             q.async_q.put_nowait(5)
 
-        with pytest.raises(
-            janus.AsyncQueueShutDown
-        ):
+        with pytest.raises(janus.AsyncQueueShutDown):
             q.async_q.get_nowait()
 
         await q.wait_closed()

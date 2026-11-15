@@ -14,9 +14,7 @@ env:
     yes
   FORCE_COLOR: 1  # Request colored output from CLI tools supporting it
   MYPY_FORCE_COLOR: 1  # MyPy's color enforcement
-  PIP_DISABLE_PIP_VERSION_CHECK: 1
-  PIP_NO_PYTHON_VERSION_WARNING: 1
-  PIP_NO_WARN_SCRIPT_LOCATION: 1
+  UV_LOCKED: 1  # Fail if uv.lock is out of date with pyproject.toml
   PRE_COMMIT_COLOR: always
   PROJECT_NAME: janus
   PY_COLORS: 1  # Recognized by the `py` package, dependency of `pytest`
@@ -32,21 +30,13 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v7
-    - name: Setup Python
-      uses: actions/setup-python@v7
+    - name: Setup uv
+      uses: astral-sh/setup-uv@v10.3.3
       with:
         python-version: 3.13
-    - name: Cache PyPI
-      uses: actions/cache@v6
-      with:
-        key: pip-lint-${{ hashFiles('requirements-dev.txt') }}
-        path: ~/.cache/pip
-        restore-keys: |
-            pip-lint-
+        enable-cache: true
     - name: Install dependencies
-      uses: py-actions/py-dependency-install@v4.1.0
-      with:
-        path: requirements-dev.txt
+      run: uv sync
     - name: Run linters
       run: |
         make lint
@@ -64,31 +54,18 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v7
-    - name: Setup Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v7
+    - name: Setup uv with Python ${{ matrix.python-version }}
+      uses: astral-sh/setup-uv@v10.3.3
       with:
         python-version: ${{ matrix.python-version }}
-    - name: Get pip cache dir
-      id: pip-cache
-      run: |
-        echo "dir=$(pip cache dir)" >> $GITHUB_OUTPUT    # - name: Cache
-      shell: bash
-    - name: Cache PyPI
-      uses: actions/cache@v6
-      with:
-        key: pip-ci-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('requirements-dev.txt') }}
-        path: ${{ steps.pip-cache.outputs.dir }}
-        restore-keys: |
-            pip-ci-${{ runner.os }}-${{ matrix.python-version }}-
+        enable-cache: true
     - name: Install dependencies
-      uses: py-actions/py-dependency-install@v4.1.0
-      with:
-        path: requirements-dev.txt
+      run: uv sync
     - name: Run unittests
       env:
         COLOR: 'yes'
       run: |
-        pytest --cov=janus --cov=tests --cov-report=term --cov-report=xml:coverage.xml
+        uv run pytest --cov=janus --cov=tests --cov-report=term --cov-report=xml:coverage.xml
     - name: Upload coverage artifact
       uses: aio-libs/prepare-coverage@v24.9.2
 
@@ -100,32 +77,19 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v7
-    - name: Setup Python 3.13
-      uses: actions/setup-python@v7
+    - name: Setup uv with Python 3.13
+      uses: astral-sh/setup-uv@v10.3.3
       with:
         python-version: 3.13
-    - name: Get pip cache dir
-      id: pip-cache
-      run: |
-        echo "dir=$(pip cache dir)" >> $GITHUB_OUTPUT    # - name: Cache
-      shell: bash
-    - name: Cache PyPI
-      uses: actions/cache@v6
-      with:
-        key: pip-ci-ubuntu-3.13-${{ hashFiles('requirements-dev.txt') }}
-        path: ${{ steps.pip-cache.outputs.dir }}
-        restore-keys: |
-            pip-ci-ubuntu-3.13-
+        enable-cache: true
     - name: Install dependencies
-      uses: py-actions/py-dependency-install@v4.1.0
-      with:
-        path: requirements-dev.txt
+      run: uv sync
     - name: Run benchmarks
       uses: CodSpeedHQ/action@v5.0.1
       with:
         mode: simulation
         token: ${{ secrets.CODSPEED_TOKEN }}
-        run: python -Im pytest --no-cov -vvvvv --codspeed
+        run: uv run --no-sync python -Im pytest --no-cov -vvvvv --codspeed
 
 
   check:  # The branch protection check
@@ -159,20 +123,17 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v7
-    - name: Setup Python
-      uses: actions/setup-python@v7
+    - name: Setup uv
+      uses: astral-sh/setup-uv@v10.3.3
       with:
         python-version: 3.13
-    - name: Install dependencies
-      uses: py-actions/py-dependency-install@v4.1.0
-      with:
-        path: requirements-dev.txt
-    - name: Install builder
-      run: |
-        python -m pip install wheel build
     - name: Make dists
       run: |
-        python -m build
+        uv build
+    - name: Get version
+      id: version
+      run: |
+        echo "version=$(uv version --short)" >> $GITHUB_OUTPUT
 
     - name: Login
       run: |
@@ -181,7 +142,7 @@ jobs:
       uses: aio-libs/create-release@v1.6.6
       with:
         changes_file: CHANGES.rst
-        version_file: ${{ env.PROJECT_NAME }}/__init__.py
+        version: ${{ steps.version.outputs.version }}
         github_token: ${{ secrets.GITHUB_TOKEN }}
         head_line: >-
           {version} \({date}\)\n
