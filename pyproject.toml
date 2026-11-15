@@ -1,10 +1,10 @@
 [build-system]
-requires = ["hatchling>=1.33.0"]
-build-backend = "hatchling.build"
+requires = ["uv_build>=0.13.8,<0.14"]
+build-backend = "uv_build"
 
 [project]
 name = "janus"
-dynamic = ["version"]
+version = "2.0.0"
 description = "Mixed sync-async queue to interoperate between asyncio tasks and classic threads"
 readme = { file = "README.rst", content-type = "text/x-rst" }
 license = "Apache-2.0"
@@ -48,21 +48,9 @@ dev = [
     "ruff==0.17.5",
 ]
 
-[tool.hatch.version]
-path = "janus/__init__.py"
-
-[tool.hatch.build.targets.sdist]
-include = [
-    "/janus",
-    "/tests",
-    "/CHANGES.rst",
-    "/README.rst",
-    "/LICENSE",
-    "/Makefile",
-]
-
-[tool.hatch.build.targets.wheel]
-packages = ["janus"]
+[tool.uv.build-backend]
+module-root = ""
+source-include = ["tests/**", "CHANGES.rst", "Makefile"]
 
 [tool.ruff]
 line-length = 88

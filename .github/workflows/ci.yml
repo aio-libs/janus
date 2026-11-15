@@ -130,6 +130,10 @@ jobs:
     - name: Make dists
       run: |
         uv build
+    - name: Get version
+      id: version
+      run: |
+        echo "version=$(uv version --short)" >> $GITHUB_OUTPUT
 
     - name: Login
       run: |
@@ -138,7 +142,7 @@ jobs:
       uses: aio-libs/create-release@v1.6.6
       with:
         changes_file: CHANGES.rst
-        version_file: ${{ env.PROJECT_NAME }}/__init__.py
+        version: ${{ steps.version.outputs.version }}
         github_token: ${{ secrets.GITHUB_TOKEN }}
         head_line: >-
           {version} \({date}\)\n

@@ -1,4 +1,5 @@
 import asyncio
+import importlib.metadata
 import sys
 import threading
 from asyncio import QueueEmpty as AsyncQueueEmpty
@@ -27,7 +28,7 @@ else:
     SyncQueueShutDown = ShutDown
 
 
-__version__ = "2.0.0"
+__version__ = importlib.metadata.version("janus")
 __all__ = (
     "Queue",
     "PriorityQueue",
