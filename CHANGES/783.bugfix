@@ -1,0 +1,1 @@
+Bounded the type variable of ``PriorityQueue`` to items supporting rich comparison (``__lt__`` or ``__gt__``), so type checkers reject non-comparable item types.
