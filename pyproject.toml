@@ -46,11 +46,20 @@ dev = [
     "pytest-codspeed==5.0.4",
     "pytest-cov==7.1.0",
     "ruff==0.17.5",
+    "towncrier==26.9.0",
 ]
 
 [tool.uv.build-backend]
 module-root = ""
 source-include = ["tests/**", "CHANGES.rst", "Makefile"]
+
+[tool.towncrier]
+package = "janus"
+filename = "CHANGES.rst"
+directory = "CHANGES/"
+title_format = "{version} ({project_date})"
+underlines = ["-", "~", "^"]
+issue_format = "`#{issue} <https://github.com/aio-libs/janus/issues/{issue}>`_"
 
 [tool.ruff]
 line-length = 88
