@@ -13,6 +13,15 @@ Changes
 
 .. towncrier release notes start
 
+2.1.1 (2026-11-15)
+------------------
+
+Bugfixes
+~~~~~~~~
+
+- Bounded the type variable of ``PriorityQueue`` to items supporting rich comparison (``__lt__`` or ``__gt__``), so type checkers reject non-comparable item types. (`#783 <https://github.com/aio-libs/janus/issues/783>`_)
+
+
 2.1.0 (2026-11-15)
 ------------------
 
