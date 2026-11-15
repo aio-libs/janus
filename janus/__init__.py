@@ -92,9 +92,6 @@ class Queue(Generic[T]):
     _loop: Optional[asyncio.AbstractEventLoop] = None
 
     def __init__(self, maxsize: int = 0) -> None:
-        if sys.version_info < (3, 10):
-            self._loop = asyncio.get_running_loop()
-
         self._maxsize = maxsize
         self._is_shutdown = False
 
@@ -111,9 +108,6 @@ class Queue(Generic[T]):
         self._sync_tasks_done_waiting = 0
 
         self._async_mutex = asyncio.Lock()
-        if sys.version_info[:3] == (3, 10, 0):
-            # Workaround for Python 3.10 bug, see #358:
-            getattr(self._async_mutex, "_get_loop", lambda: None)()
         self._async_not_empty = asyncio.Condition(self._async_mutex)
         self._async_not_empty_waiting = 0
         self._async_not_full = asyncio.Condition(self._async_mutex)
@@ -711,10 +705,10 @@ class PriorityQueue(Queue[T]):
         return len(self._heap_queue)
 
     def _put(self, item: T) -> None:
-        heappush(self._heap_queue, item)
+        heappush(self._heap_queue, item)  # type: ignore[type-var]
 
     def _get(self) -> T:
-        return heappop(self._heap_queue)
+        return heappop(self._heap_queue)  # type: ignore[type-var]
 
 
 class LifoQueue(Queue[T]):
