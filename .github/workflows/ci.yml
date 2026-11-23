@@ -31,7 +31,7 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v7
     - name: Setup uv
-      uses: astral-sh/setup-uv@v10.3.3
+      uses: astral-sh/setup-uv@v10.4.0
       with:
         python-version: 3.13
         enable-cache: true
@@ -55,7 +55,7 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v7
     - name: Setup uv with Python ${{ matrix.python-version }}
-      uses: astral-sh/setup-uv@v10.3.3
+      uses: astral-sh/setup-uv@v10.4.0
       with:
         python-version: ${{ matrix.python-version }}
         enable-cache: true
@@ -78,7 +78,7 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v7
     - name: Setup uv with Python 3.13
-      uses: astral-sh/setup-uv@v10.3.3
+      uses: astral-sh/setup-uv@v10.4.0
       with:
         python-version: 3.13
         enable-cache: true
@@ -124,7 +124,7 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v7
     - name: Setup uv
-      uses: astral-sh/setup-uv@v10.3.3
+      uses: astral-sh/setup-uv@v10.4.0
     - name: Make dists
       run: |
         uv build --no-create-gitignore
