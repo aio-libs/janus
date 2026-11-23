@@ -45,7 +45,7 @@ dev = [
     "pytest-asyncio==1.5.0",
     "pytest-codspeed==5.0.4",
     "pytest-cov==7.1.0",
-    "ruff==0.17.5",
+    "ruff==0.17.6",
     "towncrier==26.9.0",
 ]
 
