@@ -39,7 +39,7 @@ classifiers = [
 
 [dependency-groups]
 dev = [
-    "coverage==7.17.3",
+    "coverage==7.17.4",
     "mypy==2.4.1",
     "pytest==9.2.0",
     "pytest-asyncio==1.5.0",
